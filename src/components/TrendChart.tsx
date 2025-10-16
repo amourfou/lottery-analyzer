@@ -237,7 +237,7 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
                       y={average} 
                       stroke="#ef4444" 
                       strokeDasharray="5 5" 
-                      label={{ value: "평균", position: "topRight" }}
+                      label={{ value: "평균", position: "top" }}
                     />
                     
                     {/* 메인 라인 */}
