@@ -49,7 +49,8 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
       
     } catch (error) {
       console.error('데이터 로드 실패:', error);
-      alert(`데이터 로드에 실패했습니다: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
+      alert(`데이터 로드에 실패했습니다: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

@@ -69,6 +69,8 @@ export default function Home() {
         
       } catch (error) {
         console.error('자동 데이터 로드 실패:', error);
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
+        console.error('에러 메시지:', errorMessage);
       } finally {
         setIsLoading(false);
       }
