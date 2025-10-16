@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Activity, Target } from 'lucide-react';
 import { LotteryData } from '@/lib/dataParser';
 
@@ -185,10 +185,14 @@ export default function TrendAnalysis({ lotteryData }: TrendAnalysisProps) {
                   tickFormatter={(value) => value.toLocaleString()}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="change" 
-                  fill={(entry: any) => entry.change > 0 ? '#10b981' : entry.change < 0 ? '#ef4444' : '#6b7280'}
-                />
+                <Bar dataKey="change" fill="#8884d8">
+                  {changeData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.change > 0 ? '#10b981' : entry.change < 0 ? '#ef4444' : '#6b7280'} 
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
