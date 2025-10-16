@@ -186,7 +186,7 @@ export default function TrendAnalysis({ lotteryData }: TrendAnalysisProps) {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="change" fill="#8884d8">
-                  {changeData.map((entry, index) => (
+                  {trendData.slice(-20).map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.change > 0 ? '#10b981' : entry.change < 0 ? '#ef4444' : '#6b7280'} 
