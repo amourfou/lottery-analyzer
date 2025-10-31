@@ -37,26 +37,79 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
       {/* 통계 요약 */}
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">통계 분석</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{analysis.statistics.mean.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-blue-600">{Math.round(analysis.statistics.mean)}</div>
             <div className="text-sm text-gray-600">평균</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{analysis.statistics.median.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-green-600">{Math.round(analysis.statistics.median)}</div>
             <div className="text-sm text-gray-600">중앙값</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{analysis.statistics.mode.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-purple-600">{analysis.statistics.mode.toString()}</div>
             <div className="text-sm text-gray-600">최빈값</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{analysis.statistics.range.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-orange-600">{analysis.statistics.range.toString()}</div>
             <div className="text-sm text-gray-600">범위</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{analysis.statistics.standardDeviation.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-600">{Math.round(analysis.statistics.standardDeviation)}</div>
             <div className="text-sm text-gray-600">표준편차</div>
+          </div>
+        </div>
+        
+        {/* 표준편차 범위 분석 */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">표준편차 범위 분석</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-white rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">범위 내</div>
+              <div className="text-xl font-bold text-green-600">
+                {analysis.statistics.outOfRangeCount > 0 
+                  ? Math.round((1 - analysis.statistics.outOfRangeRatio) * 100)
+                  : 100}%
+              </div>
+              <div className="text-xs text-gray-500">
+                {analysis.statistics.outOfRangeCount > 0
+                  ? `${Math.round((1 - analysis.statistics.outOfRangeRatio) * 100)}%`
+                  : '100%'} (평균 ± 표준편차 × 1.5)
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">범위 밖</div>
+              <div className="text-xl font-bold text-red-600">
+                {Math.round(analysis.statistics.outOfRangeRatio * 100)}%
+              </div>
+              <div className="text-xs text-gray-500">
+                {analysis.statistics.outOfRangeCount}개
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">상한 초과</div>
+              <div className="text-xl font-bold text-orange-600">
+                {Math.round(analysis.statistics.aboveUpperBoundRatio * 100)}%
+              </div>
+              <div className="text-xs text-gray-500">
+                평균 + 표준편차 × 1.5 초과 ({analysis.statistics.aboveUpperBoundCount}개)
+              </div>
+            </div>
+            <div className="text-center p-3 bg-white rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">하한 미만</div>
+              <div className="text-xl font-bold text-blue-600">
+                {Math.round(analysis.statistics.belowLowerBoundRatio * 100)}%
+              </div>
+              <div className="text-xs text-gray-500">
+                평균 - 표준편차 × 1.5 미만 ({analysis.statistics.belowLowerBoundCount}개)
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-300">
+            <div className="text-xs text-gray-600 text-center">
+              기준 범위: {Math.round(analysis.statistics.lowerBound)} ~ {Math.round(analysis.statistics.upperBound)} 
+              (평균 {Math.round(analysis.statistics.mean)} ± 표준편차 × 1.5 {Math.round(analysis.statistics.standardDeviation * 1.5)})
+            </div>
           </div>
         </div>
       </div>
@@ -67,7 +120,7 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600 mb-2">
-              {analysis.predictions.nextNumber.toLocaleString()}
+              {analysis.predictions.nextNumber.toString().padStart(6, '0')}
             </div>
             <div className="text-sm text-gray-600">예측된 다음 숫자</div>
           </div>

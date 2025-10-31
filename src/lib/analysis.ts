@@ -40,7 +40,48 @@ function calculateStatistics(numbers: number[]) {
   const variance = numbers.reduce((sum, num) => sum + Math.pow(num - mean, 2), 0) / n;
   const standardDeviation = Math.sqrt(variance);
   
-  return { mean, median, mode: Number(mode), range, standardDeviation };
+  // 평균 ± 표준편차 × 1.5 범위를 벗어나는 숫자 분석
+  const lowerBound = mean - (standardDeviation * 1.5);
+  const upperBound = mean + (standardDeviation * 1.5);
+  let outOfRangeCount = 0;
+  let aboveUpperBoundCount = 0;
+  let belowLowerBoundCount = 0;
+  
+  // 각 숫자를 체크하여 범위 밖인지 확인
+  for (let i = 0; i < numbers.length; i++) {
+    const num = numbers[i];
+    if (typeof num !== 'number' || isNaN(num)) {
+      continue; // 유효하지 않은 숫자는 건너뛰기
+    }
+    
+    if (num < lowerBound) {
+      belowLowerBoundCount++;
+      outOfRangeCount++;
+    } else if (num > upperBound) {
+      aboveUpperBoundCount++;
+      outOfRangeCount++;
+    }
+  }
+  
+  const outOfRangeRatio = outOfRangeCount / n;
+  const aboveUpperBoundRatio = aboveUpperBoundCount / n;
+  const belowLowerBoundRatio = belowLowerBoundCount / n;
+  
+  return { 
+    mean, 
+    median, 
+    mode: Number(mode), 
+    range, 
+    standardDeviation,
+    outOfRangeCount,
+    outOfRangeRatio,
+    aboveUpperBoundCount,
+    aboveUpperBoundRatio,
+    belowLowerBoundCount,
+    belowLowerBoundRatio,
+    lowerBound,
+    upperBound
+  };
 }
 
 // 분포 분석

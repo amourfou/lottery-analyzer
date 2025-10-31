@@ -6,6 +6,14 @@ export interface NumberAnalysis {
     mode: number;
     range: number;
     standardDeviation: number;
+    outOfRangeCount: number;
+    outOfRangeRatio: number;
+    aboveUpperBoundCount: number;
+    aboveUpperBoundRatio: number;
+    belowLowerBoundCount: number;
+    belowLowerBoundRatio: number;
+    lowerBound: number;
+    upperBound: number;
   };
   distribution: {
     digitFrequency: Record<string, number>;

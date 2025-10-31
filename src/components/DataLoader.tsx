@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Upload, Database, BarChart3 } from 'lucide-react';
-import { parseLotteryData, getDataStatistics, getRecentData, LotteryData } from '@/lib/dataParser';
+import { loadLotteryData, getRecentData, extractNumbers, LotteryData } from '@/lib/dataParser';
 
 interface DataLoaderProps {
   onDataLoaded: (numbers: number[], lotteryData: LotteryData[]) => void;
@@ -20,30 +20,17 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
     setIsLoading(true);
     try {
       console.log('PensionLottery.json 파일 요청 중...');
-      const response = await fetch('/PensionLottery.json');
-      console.log('응답 상태:', response.status);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const { parsedData, numbers, statistics } = await loadLotteryData();
       
-      const rawData = await response.json();
-      console.log('원시 데이터 로드 완료:', rawData.length, '개 항목');
-      
-      // 데이터 파싱
-      const parsedData = parseLotteryData(rawData);
-      console.log('데이터 파싱 완료:', parsedData.length, '개 항목');
-      
-      const numbers = parsedData.map(data => data.combinedNumber);
-      const stats = getDataStatistics(parsedData);
-      
+      console.log('데이터 로드 및 파싱 완료:', parsedData.length, '개 항목');
       console.log('분석된 숫자들:', numbers.slice(0, 5), '...');
-      console.log('통계:', stats);
+      console.log('통계:', statistics);
       
       setLoadedData(parsedData);
-      setStatistics(stats);
+      setStatistics(statistics);
       onDataLoaded(numbers, parsedData);
-      onStatisticsLoaded(stats);
+      onStatisticsLoaded(statistics);
       
       console.log('데이터 로드 및 분석 완료!');
       
@@ -60,7 +47,7 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
     if (!loadedData) return;
     
     const recentData = getRecentData(loadedData, count);
-    const numbers = recentData.map(data => data.combinedNumber);
+    const numbers = extractNumbers(recentData);
     onDataLoaded(numbers, recentData);
   };
 

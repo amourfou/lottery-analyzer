@@ -79,7 +79,7 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-bold text-gray-800">{label}회차</p>
           <p className="text-blue-600">
-            숫자: <span className="font-mono font-bold">{data.number.toLocaleString()}</span>
+            숫자: <span className="font-mono font-bold">{data.number.toString().padStart(6, '0')}</span>
           </p>
           {data.change !== 0 && (
             <p className={`text-sm ${data.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -141,7 +141,7 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
         </div>
 
         {/* 선그래프 */}
-        <div className="h-96 p-4" style={{ border: '2px solid #ef4444', backgroundColor: '#fef2f2' }}>
+        <div className="p-4" style={{ border: '2px solid #ef4444', backgroundColor: '#fef2f2' }}>
           <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
             차트 데이터: {chartData.length}개 포인트
           </p>
@@ -199,36 +199,45 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
           </div>
           
           {/* 전체 데이터 선그래프 - 스크롤 가능 */}
-          <div style={{ height: '20rem', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', padding: '0.5rem' }}>
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', padding: '0.5rem' }}>
-              1회차부터 {chartData[chartData.length - 1]?.order}회차까지 전체 {chartData.length}개 데이터
-            </p>
+          <div style={{ 
+            width: '100%', 
+            backgroundColor: '#f3f4f6', 
+            border: '1px solid #d1d5db', 
+            padding: '0.5rem',
+            boxSizing: 'border-box'
+          }}>
             <div style={{ 
               width: '100%', 
-              height: '300px',
+              height: '380px',
               overflowX: 'auto',
-              overflowY: 'hidden'
+              overflowY: 'hidden',
+              boxSizing: 'border-box'
             }}>
               <div style={{ 
-                width: `${chartData.length * 8 * zoomLevel}px`, // 줌 레벨에 따라 너비 조정
+                width: `${Math.max(100, chartData.length * 8 * zoomLevel)}px`, 
                 minWidth: '100%',
-                height: '100%'
+                height: '100%',
+                boxSizing: 'border-box'
               }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 35 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="order" 
                       stroke="#374151"
                       fontSize={10}
                       tickFormatter={(value) => `${value}회`}
-                      interval={Math.floor(chartData.length / 20)} // 20개 정도의 눈금만 표시
+                      interval={Math.floor(chartData.length / 20)}
+                      angle={-45}
+                      textAnchor="end"
+                      height={50}
                     />
                     <YAxis 
                       stroke="#374151"
                       fontSize={12}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      tickFormatter={(value) => value.toString().padStart(6, '0')}
                       domain={[minValue * 0.9, maxValue * 1.1]}
+                      width={80}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     
@@ -253,9 +262,6 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
                 </ResponsiveContainer>
               </div>
             </div>
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', textAlign: 'center' }}>
-              ← 좌우로 스크롤하여 전체 데이터 확인 →
-            </p>
           </div>
         </div>
 
@@ -263,25 +269,25 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="text-center p-3 bg-blue-50 rounded-lg">
             <div className="text-lg font-bold text-blue-600">
-              {average.toFixed(0).toLocaleString()}
+                    {Math.round(average).toString().padStart(6, '0')}
             </div>
             <div className="text-gray-600">평균값</div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg">
             <div className="text-lg font-bold text-green-600">
-              {maxValue.toLocaleString()}
+                    {maxValue.toString().padStart(6, '0')}
             </div>
             <div className="text-gray-600">최대값</div>
           </div>
           <div className="text-center p-3 bg-red-50 rounded-lg">
             <div className="text-lg font-bold text-red-600">
-              {minValue.toLocaleString()}
+                    {minValue.toString().padStart(6, '0')}
             </div>
             <div className="text-gray-600">최소값</div>
           </div>
           <div className="text-center p-3 bg-purple-50 rounded-lg">
             <div className="text-lg font-bold text-purple-600">
-              {(maxValue - minValue).toLocaleString()}
+                    {(maxValue - minValue).toString().padStart(6, '0')}
             </div>
             <div className="text-gray-600">범위</div>
           </div>
@@ -302,7 +308,7 @@ export default function TrendChart({ lotteryData }: TrendChartProps) {
                     {point.trend === 'stable' && <Minus size={14} className="text-gray-600" />}
                   </div>
                   <div className="text-right">
-                    <div className="font-mono font-bold">{point.number.toLocaleString()}</div>
+                          <div className="font-mono font-bold">{point.number.toString().padStart(6, '0')}</div>
                     {point.change !== 0 && (
                       <div className={`text-xs ${point.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {point.change > 0 ? '+' : ''}{point.change.toLocaleString()}

@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Activity, Target } from 'lucide-react';
-import { LotteryData } from '@/lib/dataParser';
+import { LotteryData, analyzePreviousRoundComparison } from '@/lib/dataParser';
 
 interface TrendAnalysisProps {
   lotteryData: LotteryData[];
@@ -198,33 +198,130 @@ export default function TrendAnalysis({ lotteryData }: TrendAnalysisProps) {
           </div>
         </div>
 
-        {/* 최근 변화 패턴 */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">최근 변화 패턴</h3>
-          <div className="space-y-2">
-            {trendData.slice(-10).map((data, index) => {
-              const isLast = index === trendData.slice(-10).length - 1;
-              return (
-                <div key={data.order} className={`flex items-center justify-between p-3 rounded-lg ${isLast ? 'bg-blue-100' : 'bg-gray-50'}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{data.order}회차</span>
-                    {data.trend === 'up' && <TrendingUp size={16} className="text-green-600" />}
-                    {data.trend === 'down' && <TrendingDown size={16} className="text-red-600" />}
-                    {data.trend === 'stable' && <Minus size={16} className="text-gray-600" />}
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-bold ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {data.change > 0 ? '+' : ''}{data.change.toLocaleString()}
+        {/* 직전 회차 대비 변화 빈도 분석 */}
+        {(() => {
+          const comparisonAnalysis = analyzePreviousRoundComparison(lotteryData);
+          
+          const pieData = [
+            { name: '증가', value: comparisonAnalysis.increaseCount, ratio: comparisonAnalysis.increaseRatio * 100, color: '#10b981' },
+            { name: '감소', value: comparisonAnalysis.decreaseCount, ratio: comparisonAnalysis.decreaseRatio * 100, color: '#ef4444' },
+            { name: '동일', value: comparisonAnalysis.sameCount, ratio: comparisonAnalysis.sameRatio * 100, color: '#6b7280' }
+          ].filter(item => item.value > 0);
+
+          return (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">직전 회차 대비 변화 빈도 분석</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 파이 차트 */}
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, ratio }) => `${name}: ${ratio.toFixed(1)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                                <p className="font-bold text-gray-800">{data.name}</p>
+                                <p className="text-blue-600">
+                                  개수: <span className="font-bold">{data.value}회</span>
+                                </p>
+                                <p className="text-green-600">
+                                  비율: <span className="font-bold">{data.ratio.toFixed(2)}%</span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* 통계 요약 */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <TrendingUp size={16} className="text-green-600" />
+                        <span className="text-sm text-gray-600">증가</span>
+                      </div>
+                      <div className="text-xl font-bold text-green-600">{comparisonAnalysis.increaseCount}회</div>
+                      <div className="text-xs text-gray-500">{(comparisonAnalysis.increaseRatio * 100).toFixed(1)}%</div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      변동성: {data.volatility.toLocaleString()}
+                    <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <TrendingDown size={16} className="text-red-600" />
+                        <span className="text-sm text-gray-600">감소</span>
+                      </div>
+                      <div className="text-xl font-bold text-red-600">{comparisonAnalysis.decreaseCount}회</div>
+                      <div className="text-xs text-gray-500">{(comparisonAnalysis.decreaseRatio * 100).toFixed(1)}%</div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Minus size={16} className="text-gray-600" />
+                        <span className="text-sm text-gray-600">동일</span>
+                      </div>
+                      <div className="text-xl font-bold text-gray-600">{comparisonAnalysis.sameCount}회</div>
+                      <div className="text-xs text-gray-500">{(comparisonAnalysis.sameRatio * 100).toFixed(1)}%</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">연속 패턴</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-600">최대 연속 증가:</span>
+                        <span className="font-bold text-green-600 ml-2">{comparisonAnalysis.maxConsecutiveIncrease}회</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">최대 연속 감소:</span>
+                        <span className="font-bold text-red-600 ml-2">{comparisonAnalysis.maxConsecutiveDecrease}회</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-purple-50 rounded-lg">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">변화량 통계</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">평균 증가:</span>
+                        <span className="font-bold text-green-600 ml-1">+{comparisonAnalysis.changeStatistics.avgIncrease.toFixed(0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">평균 감소:</span>
+                        <span className="font-bold text-red-600 ml-1">-{comparisonAnalysis.changeStatistics.avgDecrease.toFixed(0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">최대 증가:</span>
+                        <span className="font-bold text-green-600 ml-1">+{comparisonAnalysis.changeStatistics.maxIncrease.toFixed(0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">최대 감소:</span>
+                        <span className="font-bold text-red-600 ml-1">-{comparisonAnalysis.changeStatistics.maxDecrease.toFixed(0)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 트렌드 예측 힌트 */}
         <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">

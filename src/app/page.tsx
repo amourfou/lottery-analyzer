@@ -6,9 +6,11 @@ import DataLoader from '@/components/DataLoader';
 import LotteryDataDisplay from '@/components/LotteryDataDisplay';
 import TrendChart from '@/components/TrendChart';
 import TrendAnalysis from '@/components/TrendAnalysis';
+import DuplicatePatternAnalysis from '@/components/DuplicatePatternAnalysis';
+import PredictionGenerator from '@/components/PredictionGenerator';
 import { analyzeNumbers } from '@/lib/analysis';
 import { NumberAnalysis } from '@/types';
-import { LotteryData, parseLotteryData, getDataStatistics } from '@/lib/dataParser';
+import { LotteryData, loadLotteryData } from '@/lib/dataParser';
 
 export default function Home() {
   const [numbers, setNumbers] = useState<number[]>([]);
@@ -36,27 +38,15 @@ export default function Home() {
     const loadData = async () => {
       try {
         console.log('자동 데이터 로드 시작...');
-        const response = await fetch('/PensionLottery.json');
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const { parsedData, numbers, statistics } = await loadLotteryData();
         
-        const rawData = await response.json();
-        console.log('원시 데이터 로드 완료:', rawData.length, '개 항목');
-        
-        // 데이터 파싱
-        const parsedData = parseLotteryData(rawData);
-        console.log('데이터 파싱 완료:', parsedData.length, '개 항목');
-        
-        const numbers = parsedData.map(data => data.combinedNumber);
-        const stats = getDataStatistics(parsedData);
-        
+        console.log('데이터 로드 및 파싱 완료:', parsedData.length, '개 항목');
         console.log('분석된 숫자들:', numbers.slice(0, 5), '...');
         
         setNumbers(numbers);
         setLotteryData(parsedData);
-        setDataStatistics(stats);
+        setDataStatistics(statistics);
         
         // 분석 실행
         if (numbers.length > 0) {
@@ -90,6 +80,11 @@ export default function Home() {
           트렌드 분석, 통계 분석, 분포 분석 등 다양한 기능을 제공합니다.
         </p>
       </div>
+
+      {/* AI 기반 숫자 예측 */}
+      {!isLoading && lotteryData.length > 0 && (
+        <PredictionGenerator lotteryData={lotteryData} />
+      )}
 
       {isLoading ? (
         <div className="text-center py-12">
@@ -148,6 +143,13 @@ export default function Home() {
         </div>
       )}
 
+      {/* 중복 숫자 패턴 분석 */}
+      {lotteryData.length > 0 && (
+        <div className="mt-8">
+          <DuplicatePatternAnalysis lotteryData={lotteryData} />
+        </div>
+      )}
+
       {/* 복권 데이터 표시 */}
       {lotteryData.length > 0 && (
         <div className="mt-8">
@@ -171,7 +173,7 @@ export default function Home() {
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
               <div className="text-2xl font-bold text-purple-600">
-                {analysis?.predictions.nextNumber.toLocaleString() || 0}
+                {analysis?.predictions.nextNumber ? analysis.predictions.nextNumber.toString().padStart(6, '0') : '000000'}
               </div>
               <div className="text-sm text-gray-600">예측 다음 숫자</div>
             </div>
