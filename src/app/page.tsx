@@ -8,6 +8,7 @@ import TrendChart from '@/components/TrendChart';
 import TrendAnalysis from '@/components/TrendAnalysis';
 import DuplicatePatternAnalysis from '@/components/DuplicatePatternAnalysis';
 import PredictionGenerator from '@/components/PredictionGenerator';
+import DataAdder from '@/components/DataAdder';
 import { analyzeNumbers } from '@/lib/analysis';
 import { NumberAnalysis } from '@/types';
 import { LotteryData, loadLotteryData } from '@/lib/dataParser';
@@ -18,6 +19,7 @@ export default function Home() {
   const [lotteryData, setLotteryData] = useState<LotteryData[]>([]);
   const [dataStatistics, setDataStatistics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataReloadKey, setDataReloadKey] = useState(0);
 
 
   const handleDataLoaded = (newNumbers: number[], newLotteryData: LotteryData[]) => {
@@ -33,41 +35,53 @@ export default function Home() {
     setDataStatistics(stats);
   };
 
+  // 데이터 로드 함수
+  const loadData = async () => {
+    try {
+      console.log('데이터 로드 시작...');
+      
+      const { parsedData, numbers, statistics } = await loadLotteryData();
+      
+      console.log('데이터 로드 및 파싱 완료:', parsedData.length, '개 항목');
+      console.log('분석된 숫자들:', numbers.slice(0, 5), '...');
+      
+      setNumbers(numbers);
+      setLotteryData(parsedData);
+      setDataStatistics(statistics);
+      
+      // 분석 실행
+      if (numbers.length > 0) {
+        const analysisResult = analyzeNumbers(numbers);
+        setAnalysis(analysisResult);
+      }
+      
+      console.log('데이터 로드 및 분석 완료!');
+      console.log('최종 상태 - numbers:', numbers.length, 'lotteryData:', parsedData.length);
+      
+    } catch (error) {
+      console.error('데이터 로드 실패:', error);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
+      console.error('에러 메시지:', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 페이지 로드 시 자동으로 데이터 로드
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        console.log('자동 데이터 로드 시작...');
-        
-        const { parsedData, numbers, statistics } = await loadLotteryData();
-        
-        console.log('데이터 로드 및 파싱 완료:', parsedData.length, '개 항목');
-        console.log('분석된 숫자들:', numbers.slice(0, 5), '...');
-        
-        setNumbers(numbers);
-        setLotteryData(parsedData);
-        setDataStatistics(statistics);
-        
-        // 분석 실행
-        if (numbers.length > 0) {
-          const analysisResult = analyzeNumbers(numbers);
-          setAnalysis(analysisResult);
-        }
-        
-        console.log('자동 데이터 로드 및 분석 완료!');
-        console.log('최종 상태 - numbers:', numbers.length, 'lotteryData:', parsedData.length);
-        
-      } catch (error) {
-        console.error('자동 데이터 로드 실패:', error);
-        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
-        console.error('에러 메시지:', errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadData();
   }, []);
+
+  // 데이터 추가 후 재로드
+  useEffect(() => {
+    if (dataReloadKey > 0) {
+      loadData();
+    }
+  }, [dataReloadKey]);
+
+  const handleDataAdded = () => {
+    setDataReloadKey(prev => prev + 1);
+  };
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -81,10 +95,10 @@ export default function Home() {
         </p>
       </div>
 
-      {/* AI 기반 숫자 예측 */}
-      {!isLoading && lotteryData.length > 0 && (
-        <PredictionGenerator lotteryData={lotteryData} />
-      )}
+            {/* AI 기반 숫자 예측 */}
+            {!isLoading && lotteryData.length > 0 && (
+              <PredictionGenerator lotteryData={lotteryData} />
+            )}
 
       {isLoading ? (
         <div className="text-center py-12">
@@ -93,7 +107,10 @@ export default function Home() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div>
+          <div className="space-y-6">
+            {/* 새로운 데이터 추가 */}
+            <DataAdder onDataAdded={handleDataAdded} />
+            
             <DataLoader 
               onDataLoaded={handleDataLoaded}
               onStatisticsLoaded={handleStatisticsLoaded}

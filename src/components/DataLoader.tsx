@@ -14,6 +14,7 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
   const [isLoading, setIsLoading] = useState(false);
   const [loadedData, setLoadedData] = useState<LotteryData[] | null>(null);
   const [statistics, setStatistics] = useState<any>(null);
+  const [includeBonus, setIncludeBonus] = useState(false);
 
   const loadPensionLotteryData = async () => {
     console.log('데이터 로드 시작...');
@@ -29,7 +30,10 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
       
       setLoadedData(parsedData);
       setStatistics(statistics);
-      onDataLoaded(numbers, parsedData);
+      
+      // 보너스 번호 포함 여부에 따라 숫자 추출
+      const extractedNumbers = extractNumbers(parsedData, includeBonus);
+      onDataLoaded(extractedNumbers, parsedData);
       onStatisticsLoaded(statistics);
       
       console.log('데이터 로드 및 분석 완료!');
@@ -44,11 +48,24 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
   };
 
   const loadRecentData = (count: number) => {
-    if (!loadedData) return;
+    const dataToUse = loadedData || lotteryData;
+    if (!dataToUse || dataToUse.length === 0) return;
     
-    const recentData = getRecentData(loadedData, count);
-    const numbers = extractNumbers(recentData);
+    const recentData = getRecentData(dataToUse, count);
+    const numbers = extractNumbers(recentData, includeBonus);
     onDataLoaded(numbers, recentData);
+  };
+
+  const handleBonusToggle = () => {
+    const newIncludeBonus = !includeBonus;
+    setIncludeBonus(newIncludeBonus);
+    
+    // 즉시 분석 결과 반영 - 현재 로드된 데이터나 lotteryData 사용
+    const dataToUse = loadedData || lotteryData;
+    if (dataToUse.length > 0) {
+      const numbers = extractNumbers(dataToUse, newIncludeBonus);
+      onDataLoaded(numbers, dataToUse);
+    }
   };
 
 
@@ -60,6 +77,23 @@ export default function DataLoader({ onDataLoaded, onStatisticsLoaded, lotteryDa
       </h2>
       
       <div className="space-y-4">
+        {/* 보너스 번호 포함 옵션 */}
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <input
+            type="checkbox"
+            id="includeBonus"
+            checked={includeBonus}
+            onChange={handleBonusToggle}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="includeBonus" className="text-sm font-medium text-gray-700 cursor-pointer">
+            보너스 번호 포함
+          </label>
+          <span className="text-xs text-gray-500 ml-2">
+            ({includeBonus ? '보너스 번호 포함하여 분석' : '일반 번호만 분석'})
+          </span>
+        </div>
+
         {/* 데이터 범위 선택 버튼들 */}
         {lotteryData.length > 0 && (
           <div className="space-y-2">

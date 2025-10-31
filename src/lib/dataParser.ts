@@ -4,6 +4,8 @@ export interface LotteryData {
   order: number;
   numbers: number[];
   combinedNumber: number;
+  bonusNumbers?: number[];
+  bonusCombinedNumber?: number;
 }
 
 /**
@@ -13,17 +15,21 @@ export interface LotteryData {
  */
 export function parseLotteryData(rawData: number[][]): LotteryData[] {
   return rawData.map((row, index) => {
-    // 0번째: 순서, 1번째: 무시, 2~7번째: 숫자들
+    // 0번째: 순서, 1번째: 조, 2~7번째: 번호, 8~13번째: 보너스번호
     const order = row[0];
     const numbers = row.slice(2, 8); // 2,3,4,5,6,7번째 인덱스
+    const bonusNumbers = row.length > 8 ? row.slice(8, 14) : undefined; // 8,9,10,11,12,13번째 인덱스
     
     // 6자리 숫자로 조합 (0~999999 범위)
     const combinedNumber = parseInt(numbers.join(''));
+    const bonusCombinedNumber = bonusNumbers ? parseInt(bonusNumbers.join('')) : undefined;
     
     return {
       order,
       numbers,
-      combinedNumber
+      combinedNumber,
+      bonusNumbers,
+      bonusCombinedNumber
     };
   });
 }
@@ -31,9 +37,20 @@ export function parseLotteryData(rawData: number[][]): LotteryData[] {
 /**
  * 파싱된 데이터에서 숫자들만 추출
  * @param lotteryData - 파싱된 복권 데이터
+ * @param includeBonus - 보너스 번호 포함 여부 (기본값: false)
  * @returns 숫자 배열
  */
-export function extractNumbers(lotteryData: LotteryData[]): number[] {
+export function extractNumbers(lotteryData: LotteryData[], includeBonus: boolean = false): number[] {
+  if (includeBonus) {
+    const numbers: number[] = [];
+    lotteryData.forEach(data => {
+      numbers.push(data.combinedNumber);
+      if (data.bonusCombinedNumber !== undefined) {
+        numbers.push(data.bonusCombinedNumber);
+      }
+    });
+    return numbers;
+  }
   return lotteryData.map(data => data.combinedNumber);
 }
 
