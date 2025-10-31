@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency } from '@/lib/dataParser';
-import { Sparkles, RefreshCw, Target } from 'lucide-react';
+import { Sparkles, RefreshCw, Dice6 } from 'lucide-react';
 
 interface PredictionGeneratorProps {
   lotteryData: LotteryData[];
@@ -494,7 +494,7 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
           {isGenerating ? (
             <RefreshCw className="animate-spin" size={20} />
           ) : (
-            <Target size={20} />
+            <Dice6 size={20} />
           )}
         </button>
       </div>

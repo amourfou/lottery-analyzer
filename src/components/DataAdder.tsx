@@ -135,13 +135,14 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
         >
           <Download size={18} />
         </button>
-        <button
+        {/* 데이터 추가 버튼 숨김 처리 */}
+        {/* <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           title={isOpen ? '닫기' : '데이터 추가'}
         >
           <Plus size={18} />
-        </button>
+        </button> */}
       </div>
 
       {isOpen && (
