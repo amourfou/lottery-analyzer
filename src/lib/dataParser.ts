@@ -260,6 +260,71 @@ export function analyzeDuplicatePatterns(lotteryData: LotteryData[]): DuplicateP
 }
 
 /**
+ * 같은 숫자가 중복된 횟수별 분석 결과
+ */
+export interface DuplicateFrequencyAnalysis {
+  // 0개(중복없음), 2개 나온 횟수, 3개 나온 횟수, ..., 6개 나온 횟수
+  frequencyDistribution: Record<number, number>; // 0, 2, 3, 4, 5, 6
+  // 각 빈도별 비율
+  frequencyRatio: Record<number, number>;
+  // 전체 회차 수
+  totalCount: number;
+}
+
+/**
+ * 같은 숫자가 중복된 횟수별 분석
+ * 각 회차에서 같은 숫자가 몇 번 나타나는지 분석 (0개=중복없음, 2개, 3개, 4개, 5개, 6개)
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 중복 빈도별 분석 결과
+ */
+export function analyzeDuplicateFrequency(lotteryData: LotteryData[]): DuplicateFrequencyAnalysis {
+  const frequencyDistribution: Record<number, number> = {
+    0: 0, // 중복 없음
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0
+  };
+  
+  lotteryData.forEach(data => {
+    // 6자리 숫자 문자열로 변환
+    const digitString = data.numbers.map(n => n.toString()).join('').padStart(6, '0');
+    const digits = digitString.split('');
+    
+    // 각 숫자별 등장 횟수 계산
+    const digitCount: Record<string, number> = {};
+    digits.forEach(digit => {
+      digitCount[digit] = (digitCount[digit] || 0) + 1;
+    });
+    
+    // 최대 중복 횟수 찾기
+    const maxFrequency = Math.max(...Object.values(digitCount));
+    
+    if (maxFrequency === 1) {
+      // 중복 없음 (모든 숫자가 다른 경우)
+      frequencyDistribution[0] = (frequencyDistribution[0] || 0) + 1;
+    } else if (maxFrequency >= 2 && maxFrequency <= 6) {
+      frequencyDistribution[maxFrequency] = (frequencyDistribution[maxFrequency] || 0) + 1;
+    }
+  });
+  
+  // 각 빈도별 비율 계산
+  const totalCount = lotteryData.length;
+  const frequencyRatio: Record<number, number> = {};
+  Object.keys(frequencyDistribution).forEach(key => {
+    const freq = parseInt(key);
+    frequencyRatio[freq] = frequencyDistribution[freq] / totalCount;
+  });
+  
+  return {
+    frequencyDistribution,
+    frequencyRatio,
+    totalCount
+  };
+}
+
+/**
  * 중복 숫자 배치 패턴 분석 결과 (1개 중복인 경우)
  */
 export interface DuplicatePositionPatternAnalysis {

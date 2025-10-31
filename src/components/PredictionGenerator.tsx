@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns } from '@/lib/dataParser';
+import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency } from '@/lib/dataParser';
 import { Sparkles, RefreshCw, Target } from 'lucide-react';
 
 interface PredictionGeneratorProps {
@@ -21,16 +21,45 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
   const sumAnalysis = analyzeDigitSum(lotteryData);
   const duplicateAnalysis = analyzeDuplicatePatterns(lotteryData);
   const positionPatternAnalysis = analyzeDuplicatePositionPatterns(lotteryData);
+  const duplicateFrequencyAnalysis = analyzeDuplicateFrequency(lotteryData);
 
   // 목표 합계 (평균과 최빈값의 중간값 근처)
   const targetSum = Math.round((sumAnalysis.statistics.avgSum + sumAnalysis.statistics.modeSum) / 2);
   
-  // 배치 패턴을 고려한 숫자 생성 (50% 확률로 패턴 적용)
-  const usePattern = Math.random() < 0.5 && positionPatternAnalysis.patternDetails.length > 0;
+  // 중복 빈도 패턴 선택 (0개, 2개, 3개, 4개, 5개, 6개 중복)
+  const frequencyWeights = [
+    { frequency: 0, weight: duplicateFrequencyAnalysis.frequencyDistribution[0] || 0 },
+    { frequency: 2, weight: duplicateFrequencyAnalysis.frequencyDistribution[2] || 0 },
+    { frequency: 3, weight: duplicateFrequencyAnalysis.frequencyDistribution[3] || 0 },
+    { frequency: 4, weight: duplicateFrequencyAnalysis.frequencyDistribution[4] || 0 },
+    { frequency: 5, weight: duplicateFrequencyAnalysis.frequencyDistribution[5] || 0 },
+    { frequency: 6, weight: duplicateFrequencyAnalysis.frequencyDistribution[6] || 0 }
+  ];
+  
+  const totalFrequencyWeight = frequencyWeights.reduce((sum, f) => sum + f.weight, 0);
+  let frequencyRandom = totalFrequencyWeight > 0 ? Math.random() * totalFrequencyWeight : Math.random() * 6;
+  let selectedFrequency = 0;
+  
+  if (totalFrequencyWeight > 0) {
+    for (const { frequency, weight } of frequencyWeights) {
+      frequencyRandom -= weight;
+      if (frequencyRandom <= 0) {
+        selectedFrequency = frequency;
+        break;
+      }
+    }
+  } else {
+    // 가중치가 없으면 랜덤 선택
+    const frequencies = [0, 2, 3, 4, 5, 6];
+    selectedFrequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+  }
+  
+  // 배치 패턴을 고려한 숫자 생성 (1개 중복 패턴은 selectedFrequency가 2일 때만)
+  const usePositionPattern = selectedFrequency === 2 && Math.random() < 0.5 && positionPatternAnalysis.patternDetails.length > 0;
   
   let generatedDigits: number[];
   
-  if (usePattern) {
+  if (usePositionPattern) {
     // 배치 패턴 기반 생성
     // 패턴 가중치 기반으로 선택
     const patternWeights = positionPatternAnalysis.patternDetails.map(p => ({
@@ -116,38 +145,128 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
       }
     }
   } else {
-    // 기존 방식: 각 자리별로 높은 빈도 숫자들의 가중치 리스트 생성
-    const weightedDigits: number[][] = [];
-    
-    for (let pos = 0; pos < 6; pos++) {
-      const posData = positionFreq[pos];
-      const weights: { digit: number; weight: number }[] = [];
+    // 중복 빈도에 따라 숫자 생성
+    if (selectedFrequency === 0) {
+      // 중복 없음: 모든 숫자가 다름
+      const usedDigits = new Set<number>();
+      generatedDigits = [];
       
-      // 각 숫자(0~9)의 빈도를 가중치로 사용
-      for (let digit = 0; digit <= 9; digit++) {
-        const freq = posData.digitFrequency[digit] || 0;
-        // 빈도가 높을수록 높은 가중치 (최소 1은 보장)
-        weights.push({
-          digit,
-          weight: freq + 1
-        });
+      for (let pos = 0; pos < 6; pos++) {
+        const posData = positionFreq[pos];
+        const weights: { digit: number; weight: number }[] = [];
+        
+        // 사용되지 않은 숫자만 가중치 계산
+        for (let digit = 0; digit <= 9; digit++) {
+          if (!usedDigits.has(digit)) {
+            const freq = posData.digitFrequency[digit] || 0;
+            weights.push({
+              digit,
+              weight: freq + 1
+            });
+          }
+        }
+        
+        // 가중치에 따라 숫자 선택
+        if (weights.length > 0) {
+          const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
+          let random = Math.random() * totalWeight;
+          
+          for (const { digit, weight } of weights) {
+            random -= weight;
+            if (random <= 0) {
+              generatedDigits.push(digit);
+              usedDigits.add(digit);
+              break;
+            }
+          }
+        } else {
+          // 모든 숫자를 사용한 경우 랜덤 선택
+          const availableDigits = Array.from({ length: 10 }, (_, i) => i).filter(d => !usedDigits.has(d));
+          if (availableDigits.length > 0) {
+            const digit = availableDigits[Math.floor(Math.random() * availableDigits.length)];
+            generatedDigits.push(digit);
+            usedDigits.add(digit);
+          } else {
+            generatedDigits.push(Math.floor(Math.random() * 10));
+          }
+        }
+      }
+    } else {
+      // selectedFrequency 개의 중복을 가지는 숫자 생성
+      // 중복될 숫자 선택 (각 자리별 빈도를 고려)
+      const duplicateDigit = (() => {
+        const posData = positionFreq[0]; // 첫 번째 자리 기준으로 선택
+        const weights: { digit: number; weight: number }[] = [];
+        
+        for (let digit = 0; digit <= 9; digit++) {
+          const freq = posData.digitFrequency[digit] || 0;
+          weights.push({
+            digit,
+            weight: freq + 1
+          });
+        }
+        
+        const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (const { digit, weight } of weights) {
+          random -= weight;
+          if (random <= 0) {
+            return digit;
+          }
+        }
+        return Math.floor(Math.random() * 10);
+      })();
+      
+      // 중복 위치 선택
+      const duplicatePositions = new Set<number>();
+      while (duplicatePositions.size < selectedFrequency) {
+        duplicatePositions.add(Math.floor(Math.random() * 6));
       }
       
-      // 가중치에 따라 숫자 선택
-      const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
-      let random = Math.random() * totalWeight;
+      // 숫자 생성
+      generatedDigits = Array(6).fill(-1);
       
-      for (const { digit, weight } of weights) {
-        random -= weight;
-        if (random <= 0) {
-          weightedDigits.push([digit]);
-          break;
+      // 중복 위치에 중복 숫자 배치
+      duplicatePositions.forEach(pos => {
+        generatedDigits[pos] = duplicateDigit;
+      });
+      
+      // 나머지 위치에 각 자리별 빈도를 고려한 숫자 배치
+      for (let pos = 0; pos < 6; pos++) {
+        if (generatedDigits[pos] === -1) {
+          const posData = positionFreq[pos];
+          const weights: { digit: number; weight: number }[] = [];
+          
+          // 중복 숫자 제외하고 가중치 계산
+          for (let digit = 0; digit <= 9; digit++) {
+            if (digit !== duplicateDigit) {
+              const freq = posData.digitFrequency[digit] || 0;
+              weights.push({
+                digit,
+                weight: freq + 1
+              });
+            }
+          }
+          
+          // 가중치에 따라 숫자 선택
+          if (weights.length > 0) {
+            const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (const { digit, weight } of weights) {
+              random -= weight;
+              if (random <= 0) {
+                generatedDigits[pos] = digit;
+                break;
+              }
+            }
+          } else {
+            generatedDigits[pos] = Math.floor(Math.random() * 10);
+          }
         }
       }
     }
-
-    // 가중치 기반으로 생성된 숫자들
-    generatedDigits = weightedDigits.map(arr => arr[0]);
   }
   
   let currentSum = generatedDigits.reduce((sum, d) => sum + d, 0);

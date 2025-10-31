@@ -3,7 +3,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Repeat, BarChart3, PieChart as PieChartIcon, Trophy } from 'lucide-react';
-import { LotteryData, analyzeDuplicatePatterns, DuplicatePatternAnalysisResult, analyzeDuplicatePositionPatterns } from '@/lib/dataParser';
+import { LotteryData, analyzeDuplicatePatterns, DuplicatePatternAnalysisResult, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency } from '@/lib/dataParser';
 
 interface DuplicatePatternAnalysisProps {
   lotteryData: LotteryData[];
@@ -302,9 +302,97 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
           );
         })()}
 
-        {/* 전체 통계 요약 */}
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">전체 통계 요약</h3>
+               {/* 같은 숫자 중복 빈도 분석 */}
+               {(() => {
+                 const frequencyAnalysis = analyzeDuplicateFrequency(lotteryData);
+                 
+                 const frequencyData = [0, 2, 3, 4, 5, 6].map(freq => ({
+                   frequency: freq,
+                   label: freq === 0 ? '중복 없음' : `${freq}개 중복`,
+                   count: frequencyAnalysis.frequencyDistribution[freq] || 0,
+                   ratio: (frequencyAnalysis.frequencyRatio[freq] || 0) * 100
+                 }));
+                 
+                 const FrequencyTooltip = ({ active, payload }: any) => {
+                   if (active && payload && payload.length) {
+                     const data = payload[0].payload;
+                     return (
+                       <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                         <p className="font-bold text-gray-800">{data.label}</p>
+                         <p className="text-blue-600">
+                           횟수: <span className="font-bold">{data.count}회</span>
+                         </p>
+                         <p className="text-green-600">
+                           비율: <span className="font-bold">{data.ratio.toFixed(2)}%</span>
+                         </p>
+                       </div>
+                     );
+                   }
+                   return null;
+                 };
+                 
+                 return (
+                   <div className="mt-6">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                       <Repeat size={20} />
+                       같은 숫자 중복 빈도 분석
+                     </h3>
+                     
+                     <div className="space-y-4">
+                       {/* 통계 요약 */}
+                       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                         {frequencyData.map((item) => (
+                           <div key={item.frequency} className={`text-center p-3 rounded-lg ${
+                             item.frequency === 0 ? 'bg-green-50' : 'bg-blue-50'
+                           }`}>
+                             <div className="text-sm text-gray-600 mb-1">{item.label}</div>
+                             <div className={`text-xl font-bold ${item.frequency === 0 ? 'text-green-600' : 'text-blue-600'}`}>
+                               {item.count}회
+                             </div>
+                             <div className="text-xs text-gray-500">{item.ratio.toFixed(1)}%</div>
+                           </div>
+                         ))}
+                       </div>
+                       
+                       {/* 막대 차트 */}
+                       <div className="h-64">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={frequencyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                             <XAxis 
+                               dataKey="label" 
+                               stroke="#374151"
+                               fontSize={11}
+                               angle={-45}
+                               textAnchor="end"
+                               height={60}
+                               label={{ value: '중복 빈도', position: 'insideBottom', offset: -5 }}
+                             />
+                             <YAxis 
+                               stroke="#374151"
+                               fontSize={12}
+                               label={{ value: '회수', angle: -90, position: 'insideLeft' }}
+                             />
+                             <Tooltip content={<FrequencyTooltip />} />
+                             <Bar dataKey="count" fill="#8b5cf6">
+                               {frequencyData.map((entry, index) => (
+                                 <Cell 
+                                   key={`cell-${index}`} 
+                                   fill={entry.frequency === 0 ? '#10b981' : ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index - 1]} 
+                                 />
+                               ))}
+                             </Bar>
+                           </BarChart>
+                         </ResponsiveContainer>
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {/* 전체 통계 요약 */}
+               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                 <h3 className="text-lg font-semibold text-gray-700 mb-2">전체 통계 요약</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
             <div>
               <div className="font-bold text-gray-800">전체 회차</div>

@@ -114,31 +114,6 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
         </div>
       </div>
 
-      {/* 예측 결과 */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">예측 결과</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">
-              {analysis.predictions.nextNumber.toString().padStart(6, '0')}
-            </div>
-            <div className="text-sm text-gray-600">예측된 다음 숫자</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">
-              {(analysis.predictions.confidence * 100).toFixed(1)}%
-            </div>
-            <div className="text-sm text-gray-600">예측 신뢰도</div>
-          </div>
-          <div className="text-center">
-            <div className={`text-3xl font-bold mb-2 ${trendColor} flex items-center justify-center gap-2`}>
-              {React.createElement(trendIcon, { size: 32 })}
-            </div>
-            <div className="text-sm text-gray-600">트렌드</div>
-          </div>
-        </div>
-      </div>
-
       {/* 자릿수 분포 차트 */}
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
