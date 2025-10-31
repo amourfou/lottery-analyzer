@@ -97,7 +97,7 @@ export default function Home() {
 
             {/* AI 기반 숫자 예측 */}
             {!isLoading && lotteryData.length > 0 && (
-              <PredictionGenerator lotteryData={lotteryData} />
+              <PredictionGenerator lotteryData={lotteryData} analyzedNumbers={numbers} />
             )}
 
       {isLoading ? (

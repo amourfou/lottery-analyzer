@@ -6,6 +6,7 @@ import { Sparkles, RefreshCw, Target } from 'lucide-react';
 
 interface PredictionGeneratorProps {
   lotteryData: LotteryData[];
+  analyzedNumbers?: number[]; // 현재 분석에 사용된 숫자 배열 (보너스 포함 여부 반영)
 }
 
 /**
@@ -308,7 +309,7 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
   return generatedDigits;
 }
 
-export default function PredictionGenerator({ lotteryData }: PredictionGeneratorProps) {
+export default function PredictionGenerator({ lotteryData, analyzedNumbers }: PredictionGeneratorProps) {
   const [predictedNumbers, setPredictedNumbers] = useState<number[] | null>(null);
   const [predictionSum, setPredictionSum] = useState<number | null>(null);
   const [predictionPattern, setPredictionPattern] = useState<string | null>(null);
@@ -321,6 +322,15 @@ export default function PredictionGenerator({ lotteryData }: PredictionGenerator
   const handleGenerate = () => {
     setIsGenerating(true);
     setTimeout(() => {
+      // analyzedNumbers가 있으면, 현재 분석 결과와 동일한 데이터를 사용
+      // analyzedNumbers는 보너스 포함 여부가 반영된 숫자 배열
+      // 보너스 포함 여부를 확인하기 위해 numbers.length와 lotteryData.length를 비교
+      const includeBonus = analyzedNumbers && analyzedNumbers.length > 0 
+        ? analyzedNumbers.length >= lotteryData.length * 1.5 // 보너스 포함 시 대략 2배
+        : false;
+      
+      // 보너스 포함 여부에 관계없이, 현재 분석에 사용된 lotteryData를 그대로 사용
+      // (lotteryData는 이미 현재 분석에 사용된 데이터이므로)
       const numbers = generatePrediction(lotteryData);
       const sum = numbers.reduce((s, n) => s + n, 0);
       
@@ -478,18 +488,13 @@ export default function PredictionGenerator({ lotteryData }: PredictionGenerator
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          title={isGenerating ? '생성 중...' : '숫자 생성'}
         >
           {isGenerating ? (
-            <>
-              <RefreshCw className="animate-spin" size={20} />
-              <span>생성 중...</span>
-            </>
+            <RefreshCw className="animate-spin" size={20} />
           ) : (
-            <>
-              <Target size={20} />
-              <span>숫자 생성</span>
-            </>
+            <Target size={20} />
           )}
         </button>
       </div>
@@ -497,16 +502,16 @@ export default function PredictionGenerator({ lotteryData }: PredictionGenerator
       {predictedNumbers && (
         <div className="mt-6 p-6 bg-white rounded-lg border-2 border-purple-300">
           <div className="mb-4">
-            <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 flex-wrap">
               {predictedNumbers.map((num, index) => (
                 <div key={index} className="flex flex-col items-center">
                   <div
-                    className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-lg animate-pulse"
+                    className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-lg sm:text-xl md:text-2xl font-bold shadow-lg animate-pulse"
                   >
                     {num}
                   </div>
                   {digitProbabilities[index] !== undefined && (
-                    <div className="mt-1 text-xs font-semibold text-gray-600">
+                    <div className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-600">
                       {digitProbabilities[index].toFixed(1)}%
                     </div>
                   )}
