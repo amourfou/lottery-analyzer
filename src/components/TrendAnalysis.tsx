@@ -300,12 +300,22 @@ export default function TrendAnalysis({ lotteryData }: TrendAnalysisProps) {
                     <div className="text-sm font-semibold text-gray-700 mb-2">변화량 통계</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-gray-600">평균 증가:</span>
+                        <span className="text-gray-600">상승 평균:</span>
                         <span className="font-bold text-green-600 ml-1">+{comparisonAnalysis.changeStatistics.avgIncrease.toFixed(0)}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">평균 감소:</span>
+                        <span className="text-gray-600">하락 평균:</span>
                         <span className="font-bold text-red-600 ml-1">-{comparisonAnalysis.changeStatistics.avgDecrease.toFixed(0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">총 평균:</span>
+                        <span className={`font-bold ml-1 ${comparisonAnalysis.changeStatistics.avgTotalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {comparisonAnalysis.changeStatistics.avgTotalChange >= 0 ? '+' : ''}{comparisonAnalysis.changeStatistics.avgTotalChange.toFixed(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">표준편차:</span>
+                        <span className="font-bold text-orange-600 ml-1">±{comparisonAnalysis.changeStatistics.stdDeviation.toFixed(0)}</span>
                       </div>
                       <div>
                         <span className="text-gray-600">최대 증가:</span>
@@ -315,6 +325,37 @@ export default function TrendAnalysis({ lotteryData }: TrendAnalysisProps) {
                         <span className="text-gray-600">최대 감소:</span>
                         <span className="font-bold text-red-600 ml-1">-{comparisonAnalysis.changeStatistics.maxDecrease.toFixed(0)}</span>
                       </div>
+                      <div>
+                        <span className="text-gray-600">변화 범위:</span>
+                        <span className="font-bold text-blue-600 ml-1">{comparisonAnalysis.changeStatistics.minChange.toFixed(0)} ~ {comparisonAnalysis.changeStatistics.maxChange.toFixed(0)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">표준편차 범위 분석</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">범위 내:</span>
+                        <span className="font-bold text-green-600 ml-1">
+                          {comparisonAnalysis.standardDeviationAnalysis.withinRangeCount}회
+                        </span>
+                        <span className="text-gray-500 ml-1">
+                          ({(comparisonAnalysis.standardDeviationAnalysis.withinRangeRatio * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">범위 밖:</span>
+                        <span className="font-bold text-red-600 ml-1">
+                          {comparisonAnalysis.standardDeviationAnalysis.outOfRangeCount}회
+                        </span>
+                        <span className="text-gray-500 ml-1">
+                          ({(comparisonAnalysis.standardDeviationAnalysis.outOfRangeRatio * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-600">
+                      * 평균 ± 표준편차 범위: 약 {(comparisonAnalysis.standardDeviationAnalysis.withinRangeRatio * 100).toFixed(1)}%의 회차가 범위 내에 있습니다
                     </div>
                   </div>
                 </div>

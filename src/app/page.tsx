@@ -7,6 +7,7 @@ import LotteryDataDisplay from '@/components/LotteryDataDisplay';
 import TrendChart from '@/components/TrendChart';
 import TrendAnalysis from '@/components/TrendAnalysis';
 import DuplicatePatternAnalysis from '@/components/DuplicatePatternAnalysis';
+import PositionTransitionAnalysis from '@/components/PositionTransitionAnalysis';
 import PredictionGenerator from '@/components/PredictionGenerator';
 import DataAdder from '@/components/DataAdder';
 import { analyzeNumbers } from '@/lib/analysis';
@@ -167,40 +168,17 @@ export default function Home() {
         </div>
       )}
 
+      {/* 각 자리별 전이 패턴 분석 */}
+      {lotteryData.length > 0 && (
+        <div className="mt-8">
+          <PositionTransitionAnalysis lotteryData={lotteryData} />
+        </div>
+      )}
+
       {/* 복권 데이터 표시 */}
       {lotteryData.length > 0 && (
         <div className="mt-8">
           <LotteryDataDisplay lotteryData={lotteryData} />
-        </div>
-      )}
-
-      {numbers.length > 0 && (
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">분석 요약</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{numbers.length}</div>
-              <div className="text-sm text-gray-600">입력된 숫자 개수</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {analysis?.statistics.mean.toFixed(0) || 0}
-              </div>
-              <div className="text-sm text-gray-600">평균값</div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {analysis?.predictions.nextNumber ? analysis.predictions.nextNumber.toString().padStart(6, '0') : '000000'}
-              </div>
-              <div className="text-sm text-gray-600">예측 다음 숫자</div>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">
-                {analysis ? `${(analysis.predictions.confidence * 100).toFixed(0)}%` : '0%'}
-              </div>
-              <div className="text-sm text-gray-600">예측 신뢰도</div>
-            </div>
-          </div>
         </div>
       )}
 

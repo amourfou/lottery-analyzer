@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency } from '@/lib/dataParser';
+import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency, analyzePreviousRoundComparison, analyzePositionTransition } from '@/lib/dataParser';
 import { Sparkles, RefreshCw, Dice6 } from 'lucide-react';
 
 interface PredictionGeneratorProps {
@@ -23,9 +23,20 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
   const duplicateAnalysis = analyzeDuplicatePatterns(lotteryData);
   const positionPatternAnalysis = analyzeDuplicatePositionPatterns(lotteryData);
   const duplicateFrequencyAnalysis = analyzeDuplicateFrequency(lotteryData);
+  const previousComparison = analyzePreviousRoundComparison(lotteryData);
+  const positionTransition = analyzePositionTransition(lotteryData);
+
+  // 마지막 회차의 combinedNumber 가져오기
+  const sortedData = [...lotteryData].sort((a, b) => b.order - a.order);
+  const lastRoundNumber = sortedData.length > 0 ? sortedData[0].combinedNumber : null;
+  const lastRoundDigits = sortedData.length > 0 ? sortedData[0].numbers : null; // 마지막 회차의 각 자리 숫자
 
   // 목표 합계 (평균과 최빈값의 중간값 근처)
   const targetSum = Math.round((sumAnalysis.statistics.avgSum + sumAnalysis.statistics.modeSum) / 2);
+  
+  // 변화량 범위 (최소/최대 차이)
+  const minChange = previousComparison.changeStatistics.minChange;
+  const maxChange = previousComparison.changeStatistics.maxChange;
   
   // 중복 빈도 패턴 선택 (0개, 2개, 3개, 4개, 5개, 6개 중복)
   const frequencyWeights = [
@@ -115,19 +126,30 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
       }
     });
     
-    // X 위치에 각 자리별 빈도를 고려한 숫자 배치
+    // X 위치에 각 자리별 빈도와 전이 패턴을 고려한 숫자 배치
     for (let pos = 0; pos < 6; pos++) {
       if (generatedDigits[pos] === -1) {
         const posData = positionFreq[pos];
         const weights: { digit: number; weight: number }[] = [];
         
+        // 전이 패턴 가중치 가져오기
+        const transitionData = positionTransition.positionTransitions.find(pt => pt.position === pos + 1);
+        const prevDigit = lastRoundDigits ? lastRoundDigits[pos] : null;
+        const transitionProb = prevDigit !== null && transitionData 
+          ? transitionData.transitionProbabilities[prevDigit] || {}
+          : {};
+        
         // 중복 숫자 제외하고 가중치 계산
         for (let digit = 0; digit <= 9; digit++) {
           if (digit !== duplicateDigit) {
             const freq = posData.digitFrequency[digit] || 0;
+            // 전이 패턴 확률 (0~1 범위, 없으면 0.1 기본값)
+            const transitionWeight = transitionProb[digit] || 0.1;
+            // 빈도와 전이 패턴을 조합한 가중치 (전이 패턴을 더 중요하게 반영)
+            const combinedWeight = (freq + 1) * (1 + transitionWeight * 5); // 전이 패턴에 5배 가중치
             weights.push({
               digit,
-              weight: freq + 1
+              weight: combinedWeight
             });
           }
         }
@@ -156,13 +178,24 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
         const posData = positionFreq[pos];
         const weights: { digit: number; weight: number }[] = [];
         
+        // 전이 패턴 가중치 가져오기
+        const transitionData = positionTransition.positionTransitions.find(pt => pt.position === pos + 1);
+        const prevDigit = lastRoundDigits ? lastRoundDigits[pos] : null;
+        const transitionProb = prevDigit !== null && transitionData 
+          ? transitionData.transitionProbabilities[prevDigit] || {}
+          : {};
+        
         // 사용되지 않은 숫자만 가중치 계산
         for (let digit = 0; digit <= 9; digit++) {
           if (!usedDigits.has(digit)) {
             const freq = posData.digitFrequency[digit] || 0;
+            // 전이 패턴 확률 (0~1 범위, 없으면 0.1 기본값)
+            const transitionWeight = transitionProb[digit] || 0.1;
+            // 빈도와 전이 패턴을 조합한 가중치 (전이 패턴을 더 중요하게 반영)
+            const combinedWeight = (freq + 1) * (1 + transitionWeight * 5); // 전이 패턴에 5배 가중치
             weights.push({
               digit,
-              weight: freq + 1
+              weight: combinedWeight
             });
           }
         }
@@ -233,19 +266,30 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
         generatedDigits[pos] = duplicateDigit;
       });
       
-      // 나머지 위치에 각 자리별 빈도를 고려한 숫자 배치
+      // 나머지 위치에 각 자리별 빈도와 전이 패턴을 고려한 숫자 배치
       for (let pos = 0; pos < 6; pos++) {
         if (generatedDigits[pos] === -1) {
           const posData = positionFreq[pos];
           const weights: { digit: number; weight: number }[] = [];
           
+          // 전이 패턴 가중치 가져오기
+          const transitionData = positionTransition.positionTransitions.find(pt => pt.position === pos + 1);
+          const prevDigit = lastRoundDigits ? lastRoundDigits[pos] : null;
+          const transitionProb = prevDigit !== null && transitionData 
+            ? transitionData.transitionProbabilities[prevDigit] || {}
+            : {};
+          
           // 중복 숫자 제외하고 가중치 계산
           for (let digit = 0; digit <= 9; digit++) {
             if (digit !== duplicateDigit) {
               const freq = posData.digitFrequency[digit] || 0;
+              // 전이 패턴 확률 (0~1 범위, 없으면 0.1 기본값)
+              const transitionWeight = transitionProb[digit] || 0.1;
+              // 빈도와 전이 패턴을 조합한 가중치 (전이 패턴을 더 중요하게 반영)
+              const combinedWeight = (freq + 1) * (1 + transitionWeight * 5); // 전이 패턴에 5배 가중치
               weights.push({
                 digit,
-                weight: freq + 1
+                weight: combinedWeight
               });
             }
           }
@@ -306,6 +350,73 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
     generatedDigits = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10));
   }
 
+  // 마지막 회차와의 차이 범위 제한
+  // 표준편차 기반 범위 사용 (1.5 표준편차 = 약 87% 데이터 포함, 적절한 수준)
+  const stdDeviation = previousComparison.changeStatistics.stdDeviation;
+  
+  // 전체 변화량의 평균 계산 (직전 회차 비교 데이터에서)
+  const sortedDataForAvg = [...lotteryData].sort((a, b) => a.order - b.order);
+  const allChangesForAvg: number[] = [];
+  for (let i = 1; i < sortedDataForAvg.length; i++) {
+    const change = sortedDataForAvg[i].combinedNumber - sortedDataForAvg[i - 1].combinedNumber;
+    allChangesForAvg.push(change);
+  }
+  const avgAllChange = allChangesForAvg.length > 0
+    ? allChangesForAvg.reduce((sum, val) => sum + val, 0) / allChangesForAvg.length
+    : 0;
+  
+  // 1.5 표준편차 범위 사용 (통계적으로 약 87% 데이터 포함, 적절한 수준)
+  const stdDevMultiplier = 1.5; // 1.5 표준편차 사용 (68%보다 넓고 95%보다 좁음)
+  const stdDevLowerBound = avgAllChange - (stdDeviation * stdDevMultiplier);
+  const stdDevUpperBound = avgAllChange + (stdDeviation * stdDevMultiplier);
+  
+  // 표준편차 범위와 최소/최대 범위의 교집합 사용 (표준편차 범위가 더 타이트하므로 이를 우선)
+  const effectiveLowerBound = Math.max(minChange, stdDevLowerBound);
+  const effectiveUpperBound = Math.min(maxChange, stdDevUpperBound);
+  
+  if (lastRoundNumber !== null && sortedData.length > 0 && previousComparison.totalComparisons > 0 && stdDeviation > 0) {
+    // 생성된 숫자를 combinedNumber로 변환 (6자리 배열을 숫자로 변환)
+    const generatedNumber = parseInt(generatedDigits.map(d => d.toString()).join('').padStart(6, '0'));
+    const difference = generatedNumber - lastRoundNumber;
+    
+    // 차이가 범위를 벗어나면 조정
+    if (difference < effectiveLowerBound || difference > effectiveUpperBound) {
+      // 목표 차이 계산 (전체 평균 변화량 사용)
+      const targetDifference = Math.round(avgAllChange);
+      const targetNumber = lastRoundNumber + targetDifference;
+      
+      // 목표 숫자를 6자리 배열로 변환
+      const targetString = Math.max(0, Math.min(999999, targetNumber)).toString().padStart(6, '0');
+      const targetDigits = targetString.split('').map(Number);
+      
+      // 각 자리가 0~9 범위 내에 있고, 차이가 범위 내에 있는지 확인
+      const targetCombinedNumber = parseInt(targetDigits.map(d => d.toString()).join('').padStart(6, '0'));
+      const targetDiff = targetCombinedNumber - lastRoundNumber;
+      
+      if (targetDigits.every(d => d >= 0 && d <= 9) && targetDiff >= effectiveLowerBound && targetDiff <= effectiveUpperBound) {
+        generatedDigits = targetDigits;
+      } else {
+        // 목표 숫자로 조정이 안 되면, 범위 내의 랜덤한 차이로 생성
+        const maxAttempts = 100;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const randomDiffValue = Math.floor(Math.random() * (effectiveUpperBound - effectiveLowerBound + 1)) + effectiveLowerBound;
+          const randomTargetNumber = lastRoundNumber + randomDiffValue;
+          const randomTargetString = Math.max(0, Math.min(999999, randomTargetNumber)).toString().padStart(6, '0');
+          const randomTargetDigits = randomTargetString.split('').map(Number);
+          
+          if (randomTargetDigits.every(d => d >= 0 && d <= 9)) {
+            const randomCombinedNumber = parseInt(randomTargetDigits.map(d => d.toString()).join('').padStart(6, '0'));
+            const actualDiff = randomCombinedNumber - lastRoundNumber;
+            if (actualDiff >= effectiveLowerBound && actualDiff <= effectiveUpperBound) {
+              generatedDigits = randomTargetDigits;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   return generatedDigits;
 }
 
@@ -317,6 +428,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
   const [patternPercentage, setPatternPercentage] = useState<number | null>(null);
   const [digitDuplicateProbability, setDigitDuplicateProbability] = useState<number | null>(null);
   const [digitProbabilities, setDigitProbabilities] = useState<number[]>([]);
+  const [transitionProbabilities, setTransitionProbabilities] = useState<number[]>([]); // 각 자리별 전이 확률
+  const [lastRoundDigits, setLastRoundDigits] = useState<number[] | null>(null); // 직전 회차의 각 자리 숫자
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = () => {
@@ -356,6 +469,7 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         patternCount = count;
         patternPercentage = duplicateAnalysis.duplicateCountRatio[0] ? duplicateAnalysis.duplicateCountRatio[0] * 100 : null;
         digitDuplicateProbability = null;
+        pattern = 'XXXXXX'; // 중복 숫자가 없는 패턴
       } else if (duplicates.length === 1) {
         const duplicateDigit = parseInt(duplicates[0][0]);
         const duplicateCount = digitCount[duplicateDigit];
@@ -454,6 +568,26 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         return percentage;
       });
       
+      // 각 자리별 전이 확률 계산
+      const positionTransition = analyzePositionTransition(lotteryData);
+      const sortedData = [...lotteryData].sort((a, b) => b.order - a.order);
+      const lastRound = sortedData.length > 0 ? sortedData[0].numbers : null;
+      setLastRoundDigits(lastRound);
+      
+      const transitionProbs: number[] = numbers.map((digit, pos) => {
+        if (!lastRound) return 0;
+        
+        const prevDigit = lastRound[pos];
+        const transitionData = positionTransition.positionTransitions.find(pt => pt.position === pos + 1);
+        
+        if (transitionData && transitionData.transitionProbabilities[prevDigit]) {
+          const prob = transitionData.transitionProbabilities[prevDigit][digit] || 0;
+          return prob * 100; // 확률을 퍼센트로 변환
+        }
+        
+        return 0;
+      });
+      
       setPredictedNumbers(numbers);
       setPredictionSum(sum);
       setPredictionPattern(pattern);
@@ -461,6 +595,7 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
       setPatternPercentage(patternPercentage);
       setDigitDuplicateProbability(digitDuplicateProbability);
       setDigitProbabilities(probabilities);
+      setTransitionProbabilities(transitionProbs);
       setIsGenerating(false);
     }, 300); // 애니메이션 효과를 위한 딜레이
   };
@@ -518,6 +653,45 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                 </div>
               ))}
             </div>
+            
+            {/* 직전 회차 정보 및 전이 확률 */}
+            {lastRoundDigits && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                  직전 회차 대비 전이 확률
+                </div>
+                <div className="grid grid-cols-6 gap-2">
+                  {predictedNumbers.map((num, index) => {
+                    const prevDigit = lastRoundDigits[index];
+                    const transitionProb = transitionProbabilities[index] || 0;
+                    
+                    return (
+                      <div key={index} className="text-center">
+                        <div className="text-xs text-gray-600 mb-1">
+                          {index + 1}번째
+                        </div>
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <span className="text-sm font-bold text-gray-700">{prevDigit}</span>
+                          <span className="text-xs text-gray-400">→</span>
+                          <span className="text-sm font-bold text-indigo-600">{num}</span>
+                        </div>
+                        <div className={`text-xs font-bold ${
+                          transitionProb >= 20 ? 'text-green-600' :
+                          transitionProb >= 10 ? 'text-yellow-600' :
+                          transitionProb >= 5 ? 'text-orange-600' :
+                          'text-red-600'
+                        }`}>
+                          {transitionProb.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 text-xs text-gray-500 text-center">
+                  직전 회차 각 자리 숫자에서 생성된 숫자로 전이될 확률
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

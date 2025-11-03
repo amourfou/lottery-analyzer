@@ -603,8 +603,19 @@ export interface PreviousRoundComparisonAnalysis {
   changeStatistics: {
     avgIncrease: number; // 평균 증가량
     avgDecrease: number; // 평균 감소량
+    avgTotalChange: number; // 총 평균 변화량 (상승과 하락 모두 포함한 전체 평균)
+    stdDeviation: number; // 표준편차
     maxIncrease: number; // 최대 증가량
     maxDecrease: number; // 최대 감소량
+    minChange: number; // 최소 변화량 (가장 작은 차이)
+    maxChange: number; // 최대 변화량 (가장 큰 차이)
+  };
+  // 표준편차 범위 분석
+  standardDeviationAnalysis: {
+    withinRangeCount: number; // 평균 ± 표준편차 범위 내
+    outOfRangeCount: number; // 평균 ± 표준편차 범위 밖
+    withinRangeRatio: number; // 범위 내 비율
+    outOfRangeRatio: number; // 범위 밖 비율
   };
   totalComparisons: number; // 비교 가능한 회차 수 (첫 회차 제외)
 }
@@ -628,8 +639,18 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
       changeStatistics: {
         avgIncrease: 0,
         avgDecrease: 0,
+        avgTotalChange: 0,
+        stdDeviation: 0,
         maxIncrease: 0,
-        maxDecrease: 0
+        maxDecrease: 0,
+        minChange: 0,
+        maxChange: 0
+      },
+      standardDeviationAnalysis: {
+        withinRangeCount: 0,
+        outOfRangeCount: 0,
+        withinRangeRatio: 0,
+        outOfRangeRatio: 0
       },
       totalComparisons: 0
     };
@@ -643,6 +664,7 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
   let sameCount = 0;
   const increases: number[] = [];
   const decreases: number[] = [];
+  const allChanges: number[] = []; // 모든 변화량 (상승, 하락, 동일 포함)
   
   let currentIncreaseStreak = 0;
   let currentDecreaseStreak = 0;
@@ -653,6 +675,9 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
     const currentNumber = sortedData[i].combinedNumber;
     const previousNumber = sortedData[i - 1].combinedNumber;
     const change = currentNumber - previousNumber;
+    
+    // 모든 변화량 저장
+    allChanges.push(change);
     
     if (change > 0) {
       increaseCount++;
@@ -685,8 +710,43 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
   const avgDecrease = decreases.length > 0
     ? decreases.reduce((sum, val) => sum + val, 0) / decreases.length
     : 0;
+  // 총 평균: 상승 평균과 하락 평균의 절댓값 평균
+  const avgTotalChange = (increases.length > 0 || decreases.length > 0)
+    ? (Math.abs(avgIncrease) + Math.abs(avgDecrease)) / 2
+    : 0;
+  
+  // 전체 변화량의 평균 (양수, 음수 포함한 실제 평균)
+  const avgAllChange = allChanges.length > 0
+    ? allChanges.reduce((sum, val) => sum + val, 0) / allChanges.length
+    : 0;
+  
+  // 표준편차 계산
+  const variance = allChanges.length > 1
+    ? allChanges.reduce((sum, val) => sum + Math.pow(val - avgAllChange, 2), 0) / (allChanges.length - 1)
+    : 0;
+  const stdDeviation = Math.sqrt(variance);
+  
+  // 평균 ± 표준편차 범위 내/외 분석
+  const lowerBound = avgAllChange - stdDeviation;
+  const upperBound = avgAllChange + stdDeviation;
+  let withinRangeCount = 0;
+  let outOfRangeCount = 0;
+  
+  allChanges.forEach(change => {
+    if (change >= lowerBound && change <= upperBound) {
+      withinRangeCount++;
+    } else {
+      outOfRangeCount++;
+    }
+  });
+  
+  const withinRangeRatio = allChanges.length > 0 ? withinRangeCount / allChanges.length : 0;
+  const outOfRangeRatio = allChanges.length > 0 ? outOfRangeCount / allChanges.length : 0;
+  
   const maxIncrease = increases.length > 0 ? Math.max(...increases) : 0;
   const maxDecrease = decreases.length > 0 ? Math.max(...decreases) : 0;
+  const minChange = allChanges.length > 0 ? Math.min(...allChanges) : 0;
+  const maxChange = allChanges.length > 0 ? Math.max(...allChanges) : 0;
   
   return {
     increaseCount,
@@ -700,9 +760,336 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
     changeStatistics: {
       avgIncrease,
       avgDecrease,
+      avgTotalChange,
+      stdDeviation,
       maxIncrease,
-      maxDecrease
+      maxDecrease,
+      minChange,
+      maxChange
+    },
+    standardDeviationAnalysis: {
+      withinRangeCount,
+      outOfRangeCount,
+      withinRangeRatio,
+      outOfRangeRatio
     },
     totalComparisons
+  };
+}
+
+/**
+ * 연속 숫자 패턴 분석 결과
+ */
+export interface ConsecutivePatternAnalysis {
+  // 인접 자리 간 차이 패턴
+  differenceDistribution: Record<number, number>; // 차이값별 분포 (-9 ~ 9)
+  // 연속 증가 패턴 (차이가 1인 경우)
+  consecutiveIncreaseCount: number;
+  // 연속 감소 패턴 (차이가 -1인 경우)
+  consecutiveDecreaseCount: number;
+  // 동일 숫자 패턴 (차이가 0인 경우)
+  sameDigitCount: number;
+  // 큰 점프 패턴 (차이가 5 이상)
+  largeJumpCount: number;
+  // 전체 회차 수
+  totalCount: number;
+}
+
+/**
+ * 연속 숫자 패턴 분석
+ * 인접한 자리 간 숫자 차이를 분석하여 패턴을 찾음
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 연속 숫자 패턴 분석 결과
+ */
+export function analyzeConsecutivePatterns(lotteryData: LotteryData[]): ConsecutivePatternAnalysis {
+  const differenceDistribution: Record<number, number> = {};
+  let consecutiveIncreaseCount = 0;
+  let consecutiveDecreaseCount = 0;
+  let sameDigitCount = 0;
+  let largeJumpCount = 0;
+  
+  lotteryData.forEach(data => {
+    const numbers = data.numbers;
+    
+    // 인접한 자리 간 차이 계산
+    for (let i = 0; i < numbers.length - 1; i++) {
+      const diff = numbers[i + 1] - numbers[i];
+      differenceDistribution[diff] = (differenceDistribution[diff] || 0) + 1;
+      
+      if (diff === 1) {
+        consecutiveIncreaseCount++;
+      } else if (diff === -1) {
+        consecutiveDecreaseCount++;
+      } else if (diff === 0) {
+        sameDigitCount++;
+      } else if (Math.abs(diff) >= 5) {
+        largeJumpCount++;
+      }
+    }
+  });
+  
+  return {
+    differenceDistribution,
+    consecutiveIncreaseCount,
+    consecutiveDecreaseCount,
+    sameDigitCount,
+    largeJumpCount,
+    totalCount: lotteryData.length * 5 // 5개의 인접 쌍이 있음
+  };
+}
+
+/**
+ * 숫자 범위 분포 분석 결과
+ */
+export interface RangeDistributionAnalysis {
+  // 범위별 분포 (0-3: 낮은 숫자, 4-6: 중간 숫자, 7-9: 높은 숫자)
+  rangeDistribution: {
+    low: number;    // 0-3
+    medium: number; // 4-6
+    high: number;   // 7-9
+  };
+  // 범위별 비율
+  rangeRatio: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  // 전체 회차 수
+  totalCount: number;
+}
+
+/**
+ * 숫자 범위 분포 분석
+ * 각 자리의 숫자를 범위별로 분류하여 분포를 분석
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 범위 분포 분석 결과
+ */
+export function analyzeRangeDistribution(lotteryData: LotteryData[]): RangeDistributionAnalysis {
+  let lowCount = 0;    // 0-3
+  let mediumCount = 0; // 4-6
+  let highCount = 0;   // 7-9
+  
+  lotteryData.forEach(data => {
+    data.numbers.forEach(num => {
+      if (num >= 0 && num <= 3) {
+        lowCount++;
+      } else if (num >= 4 && num <= 6) {
+        mediumCount++;
+      } else if (num >= 7 && num <= 9) {
+        highCount++;
+      }
+    });
+  });
+  
+  const totalDigits = lotteryData.length * 6;
+  const lowRatio = lowCount / totalDigits;
+  const mediumRatio = mediumCount / totalDigits;
+  const highRatio = highCount / totalDigits;
+  
+  return {
+    rangeDistribution: {
+      low: lowCount,
+      medium: mediumCount,
+      high: highCount
+    },
+    rangeRatio: {
+      low: lowRatio,
+      medium: mediumRatio,
+      high: highRatio
+    },
+    totalCount: lotteryData.length
+  };
+}
+
+/**
+ * 짝수/홀수 분포 분석 결과
+ */
+export interface EvenOddPatternAnalysis {
+  // 짝수/홀수 분포
+  evenOddDistribution: {
+    even: number; // 짝수 개수
+    odd: number;  // 홀수 개수
+  };
+  // 각 회차별 짝수 개수 분포 (0~6개)
+  evenCountDistribution: Record<number, number>;
+  // 전체 회차 수
+  totalCount: number;
+}
+
+/**
+ * 짝수/홀수 분포 분석
+ * 각 회차의 짝수/홀수 분포를 분석
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 짝수/홀수 분포 분석 결과
+ */
+export function analyzeEvenOddPatterns(lotteryData: LotteryData[]): EvenOddPatternAnalysis {
+  const evenOddDistribution = {
+    even: 0,
+    odd: 0
+  };
+  const evenCountDistribution: Record<number, number> = {
+    0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0
+  };
+  
+  lotteryData.forEach(data => {
+    let evenCount = 0;
+    
+    data.numbers.forEach(num => {
+      if (num % 2 === 0) {
+        evenOddDistribution.even++;
+        evenCount++;
+      } else {
+        evenOddDistribution.odd++;
+      }
+    });
+    
+    evenCountDistribution[evenCount] = (evenCountDistribution[evenCount] || 0) + 1;
+  });
+  
+  return {
+    evenOddDistribution,
+    evenCountDistribution,
+    totalCount: lotteryData.length
+  };
+}
+
+/**
+ * 숫자 쌍 패턴 분석 결과
+ */
+export interface DigitPairPatternAnalysis {
+  // 특정 숫자 쌍의 출현 빈도 (예: "01": 10회, "23": 5회)
+  pairFrequency: Record<string, number>;
+  // 가장 자주 나타나는 숫자 쌍 상위 10개
+  topPairs: Array<{ pair: string; count: number; percentage: number }>;
+  // 전체 회차 수
+  totalCount: number;
+}
+
+/**
+ * 숫자 쌍 패턴 분석
+ * 인접한 두 자리의 숫자 쌍이 얼마나 자주 나타나는지 분석
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 숫자 쌍 패턴 분석 결과
+ */
+export function analyzeDigitPairPatterns(lotteryData: LotteryData[]): DigitPairPatternAnalysis {
+  const pairFrequency: Record<string, number> = {};
+  
+  lotteryData.forEach(data => {
+    const numbers = data.numbers;
+    
+    // 인접한 숫자 쌍 생성
+    for (let i = 0; i < numbers.length - 1; i++) {
+      const pair = `${numbers[i]}${numbers[i + 1]}`;
+      pairFrequency[pair] = (pairFrequency[pair] || 0) + 1;
+    }
+  });
+  
+  // 상위 10개 쌍 추출
+  const totalPairs = lotteryData.length * 5; // 5개의 쌍이 있음
+  const topPairs = Object.entries(pairFrequency)
+    .map(([pair, count]) => ({
+      pair,
+      count,
+      percentage: (count / totalPairs) * 100
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  return {
+    pairFrequency,
+    topPairs,
+    totalCount: lotteryData.length
+  };
+}
+
+/**
+ * 각 자리별 전이 패턴 분석 결과
+ * 각 자리에서 이전 회차의 숫자가 X였을 때, 다음 회차의 같은 자리에 나온 숫자 Y의 빈도
+ */
+export interface PositionTransitionAnalysis {
+  // 각 자리(1~6)별 전이 패턴
+  positionTransitions: Array<{
+    position: number; // 1~6번째 자리
+    // 이전 숫자 X -> 다음 숫자 Y의 빈도
+    transitions: Record<string, Record<number, number>>; // "X" -> { Y: count }
+    // 각 이전 숫자별로 다음 숫자들의 빈도 합계
+    transitionTotals: Record<string, number>; // "X" -> total count
+    // 각 이전 숫자별로 다음 숫자들의 확률 분포
+    transitionProbabilities: Record<string, Record<number, number>>; // "X" -> { Y: probability }
+  }>;
+  totalTransitions: number; // 전체 전이 개수 (회차 수 - 1)
+}
+
+/**
+ * 각 자리별 전이 패턴 분석
+ * 각 자리에서 이전 회차의 숫자가 나왔을 때, 다음 회차의 같은 자리에 어떤 숫자가 나오는지 분석
+ * @param lotteryData - 파싱된 복권 데이터
+ * @returns 각 자리별 전이 패턴 분석 결과
+ */
+export function analyzePositionTransition(lotteryData: LotteryData[]): PositionTransitionAnalysis {
+  if (lotteryData.length < 2) {
+    return {
+      positionTransitions: [],
+      totalTransitions: 0
+    };
+  }
+
+  // 회차 순서대로 정렬
+  const sortedData = [...lotteryData].sort((a, b) => a.order - b.order);
+  
+  // 각 자리(0~5, 즉 1~6번째)별 전이 패턴 저장
+  const positionTransitions: Array<{
+    position: number;
+    transitions: Record<string, Record<number, number>>;
+    transitionTotals: Record<string, number>;
+    transitionProbabilities: Record<string, Record<number, number>>;
+  }> = [];
+
+  // 각 자리별로 분석
+  for (let pos = 0; pos < 6; pos++) {
+    const transitions: Record<string, Record<number, number>> = {}; // "X" -> { Y: count }
+    const transitionTotals: Record<string, number> = {}; // "X" -> total count
+
+    // 각 회차 쌍을 순회하며 전이 패턴 기록
+    for (let i = 1; i < sortedData.length; i++) {
+      const prevDigit = sortedData[i - 1].numbers[pos]; // 이전 회차의 해당 자리 숫자
+      const nextDigit = sortedData[i].numbers[pos]; // 다음 회차의 해당 자리 숫자
+
+      // 이전 숫자 X에 대한 전이 맵 초기화
+      if (!transitions[prevDigit]) {
+        transitions[prevDigit] = {};
+      }
+      if (!transitionTotals[prevDigit]) {
+        transitionTotals[prevDigit] = 0;
+      }
+
+      // 다음 숫자 Y의 빈도 증가
+      transitions[prevDigit][nextDigit] = (transitions[prevDigit][nextDigit] || 0) + 1;
+      transitionTotals[prevDigit]++;
+    }
+
+    // 각 이전 숫자별로 다음 숫자들의 확률 계산
+    const transitionProbabilities: Record<string, Record<number, number>> = {};
+    for (const prevDigit in transitions) {
+      transitionProbabilities[prevDigit] = {};
+      const total = transitionTotals[prevDigit];
+      
+      for (const nextDigit in transitions[prevDigit]) {
+        const count = transitions[prevDigit][nextDigit];
+        transitionProbabilities[prevDigit][parseInt(nextDigit)] = total > 0 ? count / total : 0;
+      }
+    }
+
+    positionTransitions.push({
+      position: pos + 1, // 1~6
+      transitions,
+      transitionTotals,
+      transitionProbabilities
+    });
+  }
+
+  return {
+    positionTransitions,
+    totalTransitions: sortedData.length - 1
   };
 }

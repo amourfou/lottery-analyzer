@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Repeat, BarChart3, PieChart as PieChartIcon, Trophy } from 'lucide-react';
-import { LotteryData, analyzeDuplicatePatterns, DuplicatePatternAnalysisResult, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency } from '@/lib/dataParser';
+import { Repeat, BarChart3, PieChart as PieChartIcon, Trophy, TrendingUp, Layers, Hash, Link } from 'lucide-react';
+import { LotteryData, analyzeDuplicatePatterns, DuplicatePatternAnalysisResult, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency, analyzeConsecutivePatterns, analyzeRangeDistribution, analyzeEvenOddPatterns, analyzeDigitPairPatterns } from '@/lib/dataParser';
 
 interface DuplicatePatternAnalysisProps {
   lotteryData: LotteryData[];
@@ -385,6 +385,302 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                            </BarChart>
                          </ResponsiveContainer>
                        </div>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {/* 연속 숫자 패턴 분석 */}
+               {(() => {
+                 const consecutiveAnalysis = analyzeConsecutivePatterns(lotteryData);
+                 
+                 // 차이값별 데이터 준비 (-9 ~ 9)
+                 const differenceData = [];
+                 for (let i = -9; i <= 9; i++) {
+                   const count = consecutiveAnalysis.differenceDistribution[i] || 0;
+                   if (count > 0 || Math.abs(i) <= 2) { // 차이가 작거나 의미있는 것만 표시
+                     differenceData.push({
+                       difference: i,
+                       label: i === 0 ? '동일' : i > 0 ? `+${i}` : `${i}`,
+                       count,
+                       percentage: (count / consecutiveAnalysis.totalCount) * 100
+                     });
+                   }
+                 }
+                 
+                 return (
+                   <div className="mt-6">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                       <TrendingUp size={20} />
+                       인접 자리 간 차이 패턴 분석
+                     </h3>
+                     
+                     <div className="space-y-4">
+                       {/* 통계 요약 */}
+                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                         <div className="text-center p-3 bg-blue-50 rounded-lg">
+                           <div className="text-sm text-gray-600 mb-1">연속 증가</div>
+                           <div className="text-xl font-bold text-blue-600">
+                             {consecutiveAnalysis.consecutiveIncreaseCount}
+                           </div>
+                           <div className="text-xs text-gray-500">
+                             ({((consecutiveAnalysis.consecutiveIncreaseCount / consecutiveAnalysis.totalCount) * 100).toFixed(1)}%)
+                           </div>
+                         </div>
+                         <div className="text-center p-3 bg-red-50 rounded-lg">
+                           <div className="text-sm text-gray-600 mb-1">연속 감소</div>
+                           <div className="text-xl font-bold text-red-600">
+                             {consecutiveAnalysis.consecutiveDecreaseCount}
+                           </div>
+                           <div className="text-xs text-gray-500">
+                             ({((consecutiveAnalysis.consecutiveDecreaseCount / consecutiveAnalysis.totalCount) * 100).toFixed(1)}%)
+                           </div>
+                         </div>
+                         <div className="text-center p-3 bg-gray-50 rounded-lg">
+                           <div className="text-sm text-gray-600 mb-1">동일 숫자</div>
+                           <div className="text-xl font-bold text-gray-600">
+                             {consecutiveAnalysis.sameDigitCount}
+                           </div>
+                           <div className="text-xs text-gray-500">
+                             ({((consecutiveAnalysis.sameDigitCount / consecutiveAnalysis.totalCount) * 100).toFixed(1)}%)
+                           </div>
+                         </div>
+                         <div className="text-center p-3 bg-purple-50 rounded-lg">
+                           <div className="text-sm text-gray-600 mb-1">큰 점프 (≥5)</div>
+                           <div className="text-xl font-bold text-purple-600">
+                             {consecutiveAnalysis.largeJumpCount}
+                           </div>
+                           <div className="text-xs text-gray-500">
+                             ({((consecutiveAnalysis.largeJumpCount / consecutiveAnalysis.totalCount) * 100).toFixed(1)}%)
+                           </div>
+                         </div>
+                         <div className="text-center p-3 bg-green-50 rounded-lg">
+                           <div className="text-sm text-gray-600 mb-1">총 분석 쌍</div>
+                           <div className="text-xl font-bold text-green-600">
+                             {consecutiveAnalysis.totalCount}
+                           </div>
+                         </div>
+                       </div>
+                       
+                       {/* 차이값 분포 차트 */}
+                       <div className="h-64">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={differenceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                             <XAxis 
+                               dataKey="label" 
+                               stroke="#374151"
+                               fontSize={11}
+                               angle={-45}
+                               textAnchor="end"
+                               height={60}
+                             />
+                             <YAxis 
+                               stroke="#374151"
+                               fontSize={12}
+                               label={{ value: '횟수', angle: -90, position: 'insideLeft' }}
+                             />
+                             <Tooltip 
+                               formatter={(value: any) => [`${value}회`, '횟수']}
+                               labelFormatter={(label) => `차이: ${label}`}
+                             />
+                             <Bar dataKey="count" fill="#8b5cf6">
+                               {differenceData.map((entry, index) => (
+                                 <Cell 
+                                   key={`cell-${index}`} 
+                                   fill={entry.difference === 0 ? '#10b981' : 
+                                         entry.difference === 1 ? '#3b82f6' : 
+                                         entry.difference === -1 ? '#ef4444' :
+                                         Math.abs(entry.difference) >= 5 ? '#f59e0b' : '#8b5cf6'} 
+                                 />
+                               ))}
+                             </Bar>
+                           </BarChart>
+                         </ResponsiveContainer>
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {/* 숫자 범위 분포 분석 */}
+               {(() => {
+                 const rangeAnalysis = analyzeRangeDistribution(lotteryData);
+                 
+                 const rangeData = [
+                   { name: '낮은 숫자 (0-3)', value: rangeAnalysis.rangeDistribution.low, percentage: rangeAnalysis.rangeRatio.low * 100 },
+                   { name: '중간 숫자 (4-6)', value: rangeAnalysis.rangeDistribution.medium, percentage: rangeAnalysis.rangeRatio.medium * 100 },
+                   { name: '높은 숫자 (7-9)', value: rangeAnalysis.rangeDistribution.high, percentage: rangeAnalysis.rangeRatio.high * 100 }
+                 ];
+                 
+                 return (
+                   <div className="mt-6">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                       <Layers size={20} />
+                       숫자 범위 분포 분석
+                     </h3>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {/* 파이 차트 */}
+                       <div className="h-64">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <PieChart>
+                             <Pie
+                               data={rangeData}
+                               cx="50%"
+                               cy="50%"
+                               labelLine={false}
+                               label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+                               outerRadius={80}
+                               fill="#8884d8"
+                               dataKey="value"
+                             >
+                               {rangeData.map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                               ))}
+                             </Pie>
+                             <Tooltip formatter={(value: any) => `${value}개`} />
+                           </PieChart>
+                         </ResponsiveContainer>
+                       </div>
+                       
+                       {/* 통계 요약 */}
+                       <div className="space-y-3">
+                         {rangeData.map((item, index) => (
+                           <div key={index} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                             <div className="flex justify-between items-center">
+                               <div className="font-semibold text-gray-700">{item.name}</div>
+                               <div className="text-2xl font-bold text-blue-600">{item.value.toLocaleString()}</div>
+                             </div>
+                             <div className="text-sm text-gray-500 mt-1">{item.percentage.toFixed(2)}%</div>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {/* 짝수/홀수 분포 분석 */}
+               {(() => {
+                 const evenOddAnalysis = analyzeEvenOddPatterns(lotteryData);
+                 
+                 const evenCountData = [0, 1, 2, 3, 4, 5, 6].map(count => ({
+                   evenCount: count,
+                   label: `${count}개`,
+                   count: evenOddAnalysis.evenCountDistribution[count] || 0,
+                   percentage: ((evenOddAnalysis.evenCountDistribution[count] || 0) / evenOddAnalysis.totalCount) * 100
+                 }));
+                 
+                 const evenOddPieData = [
+                   { name: '짝수', value: evenOddAnalysis.evenOddDistribution.even, percentage: (evenOddAnalysis.evenOddDistribution.even / (evenOddAnalysis.totalCount * 6)) * 100 },
+                   { name: '홀수', value: evenOddAnalysis.evenOddDistribution.odd, percentage: (evenOddAnalysis.evenOddDistribution.odd / (evenOddAnalysis.totalCount * 6)) * 100 }
+                 ];
+                 
+                 return (
+                   <div className="mt-6">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                       <Hash size={20} />
+                       짝수/홀수 분포 분석
+                     </h3>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {/* 짝수/홀수 전체 분포 */}
+                       <div>
+                         <h4 className="text-sm font-semibold text-gray-600 mb-2">전체 분포</h4>
+                         <div className="h-48">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <PieChart>
+                               <Pie
+                                 data={evenOddPieData}
+                                 cx="50%"
+                                 cy="50%"
+                                 labelLine={false}
+                                 label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+                                 outerRadius={60}
+                                 fill="#8884d8"
+                                 dataKey="value"
+                               >
+                                 {evenOddPieData.map((entry, index) => (
+                                   <Cell key={`cell-${index}`} fill={index === 0 ? '#3b82f6' : '#ef4444'} />
+                                 ))}
+                               </Pie>
+                               <Tooltip formatter={(value: any) => `${value.toLocaleString()}개`} />
+                             </PieChart>
+                           </ResponsiveContainer>
+                         </div>
+                         <div className="grid grid-cols-2 gap-3 mt-4">
+                           <div className="text-center p-3 bg-blue-50 rounded-lg">
+                             <div className="text-sm text-gray-600">짝수 총계</div>
+                             <div className="text-xl font-bold text-blue-600">{evenOddAnalysis.evenOddDistribution.even.toLocaleString()}</div>
+                           </div>
+                           <div className="text-center p-3 bg-red-50 rounded-lg">
+                             <div className="text-sm text-gray-600">홀수 총계</div>
+                             <div className="text-xl font-bold text-red-600">{evenOddAnalysis.evenOddDistribution.odd.toLocaleString()}</div>
+                           </div>
+                         </div>
+                       </div>
+                       
+                       {/* 회차별 짝수 개수 분포 */}
+                       <div>
+                         <h4 className="text-sm font-semibold text-gray-600 mb-2">회차별 짝수 개수 분포</h4>
+                         <div className="h-64">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <BarChart data={evenCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                               <XAxis 
+                                 dataKey="label" 
+                                 stroke="#374151"
+                                 fontSize={12}
+                               />
+                               <YAxis 
+                                 stroke="#374151"
+                                 fontSize={12}
+                                 label={{ value: '회차 수', angle: -90, position: 'insideLeft' }}
+                               />
+                               <Tooltip 
+                                 formatter={(value: any, name: string, props: any) => [
+                                   `${value}회 (${props.payload.percentage.toFixed(1)}%)`,
+                                   '회차 수'
+                                 ]}
+                               />
+                               <Bar dataKey="count" fill="#3b82f6" />
+                             </BarChart>
+                           </ResponsiveContainer>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {/* 숫자 쌍 패턴 분석 */}
+               {(() => {
+                 const pairAnalysis = analyzeDigitPairPatterns(lotteryData);
+                 
+                 return (
+                   <div className="mt-6">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                       <Link size={20} />
+                       인접 숫자 쌍 패턴 분석 (상위 10개)
+                     </h3>
+                     
+                     <div className="space-y-2">
+                       {pairAnalysis.topPairs.map((pair, index) => (
+                         <div key={pair.pair} className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                           <div className="w-8 h-8 flex items-center justify-center bg-purple-600 text-white rounded-full font-bold">
+                             {index + 1}
+                           </div>
+                           <div className="flex-1">
+                             <div className="font-mono text-xl font-bold text-gray-800">{pair.pair}</div>
+                             <div className="text-sm text-gray-500">인접한 두 자리 숫자 쌍</div>
+                           </div>
+                           <div className="text-right">
+                             <div className="text-lg font-bold text-blue-600">{pair.count}회</div>
+                             <div className="text-sm text-gray-500">{pair.percentage.toFixed(2)}%</div>
+                           </div>
+                         </div>
+                       ))}
                      </div>
                    </div>
                  );
