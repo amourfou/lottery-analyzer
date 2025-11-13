@@ -426,7 +426,12 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
   const [predictionPattern, setPredictionPattern] = useState<string | null>(null);
   const [patternCount, setPatternCount] = useState<number | null>(null);
   const [patternPercentage, setPatternPercentage] = useState<number | null>(null);
+  const [patternRank, setPatternRank] = useState<number | null>(null); // 배치 패턴 순위
+  const [patternTotalCount, setPatternTotalCount] = useState<number | null>(null); // 전체 패턴 개수
   const [digitDuplicateProbability, setDigitDuplicateProbability] = useState<number | null>(null);
+  const [duplicateDigitRank, setDuplicateDigitRank] = useState<number | null>(null); // 중복 숫자 순위
+  const [duplicateDigitTotalCount, setDuplicateDigitTotalCount] = useState<number | null>(null); // 전체 중복 숫자 개수
+  const [duplicateDigit, setDuplicateDigit] = useState<number | null>(null); // 중복된 숫자
   const [digitProbabilities, setDigitProbabilities] = useState<number[]>([]);
   const [transitionProbabilities, setTransitionProbabilities] = useState<number[]>([]); // 각 자리별 전이 확률
   const [lastRoundDigits, setLastRoundDigits] = useState<number[] | null>(null); // 직전 회차의 각 자리 숫자
@@ -457,7 +462,12 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
       let pattern: string | null = null;
       let patternCount: number | null = null;
       let patternPercentage: number | null = null;
+      let patternRank: number | null = null;
+      let patternTotalCount: number | null = null;
       let digitDuplicateProbability: number | null = null;
+      let duplicateDigitRank: number | null = null;
+      let duplicateDigitTotalCount: number | null = null;
+      let duplicateDigit: number | null = null;
       
       // 중복 패턴 분석을 위해 전체 데이터 분석
       const duplicateAnalysis = analyzeDuplicatePatterns(lotteryData);
@@ -469,42 +479,60 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         patternCount = count;
         patternPercentage = duplicateAnalysis.duplicateCountRatio[0] ? duplicateAnalysis.duplicateCountRatio[0] * 100 : null;
         digitDuplicateProbability = null;
+        duplicateDigitRank = null;
+        duplicateDigitTotalCount = null;
+        duplicateDigit = null;
         pattern = 'XXXXXX'; // 중복 숫자가 없는 패턴
+        patternRank = null;
+        patternTotalCount = null;
       } else if (duplicates.length === 1) {
-        const duplicateDigit = parseInt(duplicates[0][0]);
-        const duplicateCount = digitCount[duplicateDigit];
+        const currentDuplicateDigit = parseInt(duplicates[0][0]);
+        duplicateDigit = currentDuplicateDigit;
+        const duplicateCount = digitCount[currentDuplicateDigit];
         
         // 해당 숫자의 중복 확률 계산 (1개 중복으로 나타난 횟수)
-        const digitRanking = duplicateAnalysis.singleDuplicateDigitRanking.find(
-          item => item.digit === duplicateDigit.toString()
+        const digitRankingIndex = duplicateAnalysis.singleDuplicateDigitRanking.findIndex(
+          item => item.digit === currentDuplicateDigit.toString()
         );
-        if (digitRanking) {
-          digitDuplicateProbability = (digitRanking.count / totalCount) * 100;
+        if (digitRankingIndex !== -1) {
+          digitDuplicateProbability = (duplicateAnalysis.singleDuplicateDigitRanking[digitRankingIndex].count / totalCount) * 100;
+          duplicateDigitRank = digitRankingIndex + 1; // 1부터 시작하는 순위
+          duplicateDigitTotalCount = duplicateAnalysis.singleDuplicateDigitRanking.length;
+        } else {
+          duplicateDigitRank = null;
+          duplicateDigitTotalCount = null;
         }
         
         if (duplicateCount === 2) {
           // 1개 숫자가 정확히 2번 중복
-          pattern = numbers.map(d => d === duplicateDigit ? 'O' : 'X').join('');
+          pattern = numbers.map(d => d === currentDuplicateDigit ? 'O' : 'X').join('');
           
           // 해당 패턴의 카운트와 비율 찾기
           const positionPatternAnalysis = analyzeDuplicatePositionPatterns(lotteryData);
-          const patternData = positionPatternAnalysis.patternDetails.find(p => p.pattern === pattern);
-          if (patternData) {
+          const patternDataIndex = positionPatternAnalysis.patternDetails.findIndex(p => p.pattern === pattern);
+          if (patternDataIndex !== -1) {
+            const patternData = positionPatternAnalysis.patternDetails[patternDataIndex];
             patternCount = patternData.count;
             patternPercentage = patternData.percentage;
+            patternRank = patternDataIndex + 1; // 1부터 시작하는 순위
+            patternTotalCount = positionPatternAnalysis.patternDetails.length;
           } else {
             // 전체 1개 중복 비율
             const count = duplicateAnalysis.duplicateCountDistribution[1] || 0;
             patternCount = count;
             patternPercentage = duplicateAnalysis.duplicateCountRatio[1] ? duplicateAnalysis.duplicateCountRatio[1] * 100 : null;
+            patternRank = null;
+            patternTotalCount = null;
           }
         } else {
           // 1개 숫자가 3번 이상 중복
-          pattern = numbers.map(d => d === duplicateDigit ? 'O' : 'X').join('');
+          pattern = numbers.map(d => d === currentDuplicateDigit ? 'O' : 'X').join('');
           // 기타 패턴 비율
           const count = duplicateAnalysis.duplicateCountDistribution[-1] || 0;
           patternCount = count;
           patternPercentage = duplicateAnalysis.duplicateCountRatio[-1] ? duplicateAnalysis.duplicateCountRatio[-1] * 100 : null;
+          patternRank = null;
+          patternTotalCount = null;
         }
       } else if (duplicates.length === 2) {
         // 2개 숫자가 중복
@@ -512,6 +540,20 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         const duplicate2 = parseInt(duplicates[1][0]);
         const count1 = digitCount[duplicate1];
         const count2 = digitCount[duplicate2];
+        
+        // 첫 번째 중복 숫자의 순위 찾기
+        const digitRankingIndex1 = duplicateAnalysis.singleDuplicateDigitRanking.findIndex(
+          item => item.digit === duplicate1.toString()
+        );
+        if (digitRankingIndex1 !== -1) {
+          duplicateDigit = duplicate1;
+          duplicateDigitRank = digitRankingIndex1 + 1;
+          duplicateDigitTotalCount = duplicateAnalysis.singleDuplicateDigitRanking.length;
+        } else {
+          duplicateDigit = null;
+          duplicateDigitRank = null;
+          duplicateDigitTotalCount = null;
+        }
         
         // 패턴 생성 (첫 번째 중복: O, 두 번째 중복: A, 나머지: X)
         pattern = numbers.map(d => {
@@ -541,6 +583,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
           patternPercentage = duplicateAnalysis.duplicateCountRatio[2] ? duplicateAnalysis.duplicateCountRatio[2] * 100 : null;
         }
         digitDuplicateProbability = null;
+        patternRank = null;
+        patternTotalCount = null;
       } else {
         // 3개 이상 중복
         pattern = numbers.map((d, idx) => {
@@ -557,6 +601,11 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         patternCount = count;
         patternPercentage = duplicateAnalysis.duplicateCountRatio[-1] ? duplicateAnalysis.duplicateCountRatio[-1] * 100 : null;
         digitDuplicateProbability = null;
+        duplicateDigitRank = null;
+        duplicateDigitTotalCount = null;
+        duplicateDigit = null;
+        patternRank = null;
+        patternTotalCount = null;
       }
       
       // 각 자릿수별 확률 계산
@@ -593,7 +642,12 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
       setPredictionPattern(pattern);
       setPatternCount(patternCount);
       setPatternPercentage(patternPercentage);
+      setPatternRank(patternRank);
+      setPatternTotalCount(patternTotalCount);
       setDigitDuplicateProbability(digitDuplicateProbability);
+      setDuplicateDigitRank(duplicateDigitRank);
+      setDuplicateDigitTotalCount(duplicateDigitTotalCount);
+      setDuplicateDigit(duplicateDigit);
       setDigitProbabilities(probabilities);
       setTransitionProbabilities(transitionProbs);
       setIsGenerating(false);
@@ -660,7 +714,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                 <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
                   직전 회차 대비 전이 확률
                 </div>
-                <div className="grid grid-cols-6 gap-2">
+                {/* 데스크톱: 가로 배치 */}
+                <div className="hidden md:grid md:grid-cols-6 gap-2">
                   {predictedNumbers.map((num, index) => {
                     const prevDigit = lastRoundDigits[index];
                     const transitionProb = transitionProbabilities[index] || 0;
@@ -682,6 +737,27 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                           'text-red-600'
                         }`}>
                           {transitionProb.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* 모바일: 세로 배치 */}
+                <div className="md:hidden space-y-2">
+                  {predictedNumbers.map((num, index) => {
+                    const prevDigit = lastRoundDigits[index];
+                    const transitionProb = transitionProbabilities[index] || 0;
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-indigo-100">
+                        <span className="text-xs text-gray-500 w-12">{index + 1}번째</span>
+                        <div className={`flex-1 text-sm font-bold ${
+                          transitionProb >= 20 ? 'text-green-600' :
+                          transitionProb >= 10 ? 'text-yellow-600' :
+                          transitionProb >= 5 ? 'text-orange-600' :
+                          'text-red-600'
+                        }`}>
+                          {prevDigit}→{num} {transitionProb.toFixed(1)}%
                         </div>
                       </div>
                     );
@@ -736,26 +812,18 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                       })}
                     </span>
                   </div>
-                  {patternCount !== null && patternPercentage !== null && (
-                    <div className="text-xs font-semibold text-indigo-600">
-                      {patternCount}회 / {lotteryData.length}회 ({patternPercentage.toFixed(1)}%)
+                  {patternRank !== null && patternTotalCount !== null && (
+                    <div className="text-xs font-bold text-purple-600 mt-1">
+                      패턴 순위: {patternRank}위 / {patternTotalCount}개 패턴 중
                     </div>
                   )}
-                  {digitDuplicateProbability !== null && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      해당 숫자 중복 확률: {digitDuplicateProbability.toFixed(1)}%
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {patternCount !== null && patternPercentage !== null && (
-                    <div className="text-sm font-bold text-indigo-600">
-                      {patternCount}회 / {lotteryData.length}회 ({patternPercentage.toFixed(1)}%)
+                  {duplicateDigit !== null && duplicateDigitRank !== null && duplicateDigitTotalCount !== null && (
+                    <div className="text-xs font-bold text-orange-600 mt-1">
+                      중복 숫자 {duplicateDigit}: {duplicateDigitRank}위 / {duplicateDigitTotalCount}개 중
                     </div>
                   )}
                 </>
-              )}
+              ) : null}
             </div>
           </div>
           

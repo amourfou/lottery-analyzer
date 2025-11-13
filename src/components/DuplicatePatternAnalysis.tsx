@@ -258,43 +258,58 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                 {/* 패턴별 상세 리스트 */}
                 <div>
                   <h4 className="text-md font-semibold text-gray-700 mb-3">패턴별 상세 정보</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {positionPatternAnalysis.patternDetails.map((pattern, index) => (
-                      <div
-                        key={pattern.pattern}
-                        className={`p-4 rounded-lg border ${
-                          index === 0
-                            ? 'bg-yellow-50 border-2 border-yellow-400'
-                            : index < 3
-                            ? 'bg-gray-50 border border-gray-300'
-                            : 'bg-white border border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-600">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 border-b-2 border-gray-300">
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">순위</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">패턴</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">횟수</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">비율</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">예시 회차</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {positionPatternAnalysis.patternDetails.map((pattern, index) => (
+                          <tr
+                            key={pattern.pattern}
+                            className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                              index === 0
+                                ? 'bg-yellow-50'
+                                : index < 3
+                                ? 'bg-gray-50'
+                                : 'bg-white'
+                            }`}
+                          >
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-600">
                               {index + 1}위
-                            </span>
-                            <span className="text-xl font-bold text-gray-800 font-mono">
-                              {pattern.pattern.split('').map((char, i) => (
-                                <span key={i} className={char === 'O' ? 'text-red-600' : 'text-gray-400'}>
-                                  {char}
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right mb-2">
-                          <div className="text-2xl font-bold text-blue-600">{pattern.count}회</div>
-                          <div className="text-xs text-gray-500">{pattern.percentage.toFixed(2)}%</div>
-                        </div>
-                        {pattern.examples.length > 0 && (
-                          <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300">
-                            예시 회차: {pattern.examples.join(', ')}회차
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-lg font-bold text-gray-800 font-mono">
+                                {pattern.pattern.split('').map((char, i) => (
+                                  <span key={i} className={char === 'O' ? 'text-red-600' : 'text-gray-400'}>
+                                    {char}
+                                  </span>
+                                ))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-lg font-bold text-blue-600">{pattern.count}회</span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm text-gray-600">{pattern.percentage.toFixed(2)}%</span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">
+                              {pattern.examples.length > 0 ? (
+                                <span>{pattern.examples.join(', ')}회차</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -665,22 +680,48 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                        인접 숫자 쌍 패턴 분석 (상위 10개)
                      </h3>
                      
-                     <div className="space-y-2">
-                       {pairAnalysis.topPairs.map((pair, index) => (
-                         <div key={pair.pair} className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                           <div className="w-8 h-8 flex items-center justify-center bg-purple-600 text-white rounded-full font-bold">
-                             {index + 1}
-                           </div>
-                           <div className="flex-1">
-                             <div className="font-mono text-xl font-bold text-gray-800">{pair.pair}</div>
-                             <div className="text-sm text-gray-500">인접한 두 자리 숫자 쌍</div>
-                           </div>
-                           <div className="text-right">
-                             <div className="text-lg font-bold text-blue-600">{pair.count}회</div>
-                             <div className="text-sm text-gray-500">{pair.percentage.toFixed(2)}%</div>
-                           </div>
-                         </div>
-                       ))}
+                     <div className="overflow-x-auto">
+                       <table className="w-full border-collapse">
+                         <thead>
+                           <tr className="bg-gray-100 border-b-2 border-gray-300">
+                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">순위</th>
+                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">숫자 쌍</th>
+                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">설명</th>
+                             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">횟수</th>
+                             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">비율</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {pairAnalysis.topPairs.map((pair, index) => (
+                             <tr
+                               key={pair.pair}
+                               className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                                 index === 0
+                                   ? 'bg-yellow-50'
+                                   : index < 3
+                                   ? 'bg-gray-50'
+                                   : 'bg-white'
+                               }`}
+                             >
+                               <td className="px-4 py-3">
+                                 <div className="w-8 h-8 flex items-center justify-center bg-purple-600 text-white rounded-full font-bold text-sm">
+                                   {index + 1}
+                                 </div>
+                               </td>
+                               <td className="px-4 py-3">
+                                 <span className="font-mono text-lg font-bold text-gray-800">{pair.pair}</span>
+                               </td>
+                               <td className="px-4 py-3 text-sm text-gray-500">인접한 두 자리 숫자 쌍</td>
+                               <td className="px-4 py-3 text-right">
+                                 <span className="text-lg font-bold text-blue-600">{pair.count}회</span>
+                               </td>
+                               <td className="px-4 py-3 text-right">
+                                 <span className="text-sm text-gray-600">{pair.percentage.toFixed(2)}%</span>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
                      </div>
                    </div>
                  );

@@ -87,7 +87,7 @@ export default function PositionTransitionAnalysis({ lotteryData }: PositionTran
               {/* 내용 */}
               {isExpanded && (
                 <div className="p-4 bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     {prevDigits.map((prevDigit) => {
                       const transitions = positionData.transitions[prevDigit];
                       const probabilities = positionData.transitionProbabilities[prevDigit] || {};
@@ -109,9 +109,9 @@ export default function PositionTransitionAnalysis({ lotteryData }: PositionTran
                             });
                           }}
                         >
-                          <div className="mb-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-2xl font-bold text-indigo-600">{prevDigit}</span>
+                          <div className="mb-3 pb-3 border-b border-gray-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xl font-bold text-indigo-600">{prevDigit}</span>
                               <ArrowRight className="text-gray-400" size={16} />
                               <span className="text-sm text-gray-600">다음 숫자</span>
                             </div>
@@ -120,29 +120,45 @@ export default function PositionTransitionAnalysis({ lotteryData }: PositionTran
                             </div>
                           </div>
 
-                          <div className="space-y-2">
-                            {nextDigits.map((nextDigit) => {
-                              const count = transitions[nextDigit];
-                              const prob = probabilities[nextDigit] || 0;
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">다음 숫자</th>
+                                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">횟수</th>
+                                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">확률</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">시각화</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {nextDigits.map((nextDigit) => {
+                                  const count = transitions[nextDigit];
+                                  const prob = probabilities[nextDigit] || 0;
 
-                              return (
-                                <div key={nextDigit} className="flex items-center gap-2">
-                                  <div className="w-8 text-center font-semibold text-gray-700">
-                                    {nextDigit}
-                                  </div>
-                                  <div className="flex-1 relative">
-                                    <div
-                                      className={`h-6 rounded ${getColorForProbability(prob)} transition-all`}
-                                      style={{ width: `${prob * 100}%` }}
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-between px-2 text-xs text-white font-semibold">
-                                      <span>{count}회</span>
-                                      <span>{(prob * 100).toFixed(1)}%</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                  return (
+                                    <tr key={nextDigit} className="border-b border-gray-100 hover:bg-gray-50">
+                                      <td className="px-3 py-2">
+                                        <span className="text-sm font-semibold text-gray-700">{nextDigit}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right">
+                                        <span className="text-sm text-blue-600 font-semibold">{count}회</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right">
+                                        <span className="text-sm text-green-600 font-semibold">{(prob * 100).toFixed(1)}%</span>
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <div className="flex-1 relative h-5 bg-gray-200 rounded">
+                                          <div
+                                            className={`h-full rounded ${getColorForProbability(prob)} transition-all`}
+                                            style={{ width: `${Math.min(prob * 100, 100)}%` }}
+                                          />
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       );
