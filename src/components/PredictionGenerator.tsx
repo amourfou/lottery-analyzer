@@ -73,7 +73,7 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
   
   if (usePositionPattern) {
     // 배치 패턴 기반 생성
-    // 패턴 가중치 기반으로 선택
+    // 패턴 빈도를 가중치로 사용하는 룰렛 휠 방식 (빈도가 높을수록 더 잘 선택됨)
     const patternWeights = positionPatternAnalysis.patternDetails.map(p => ({
       pattern: p.pattern,
       weight: p.count
@@ -91,7 +91,7 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
       }
     }
     
-    // 중복될 숫자 선택 (1개 중복 숫자 빈도 순위 기반)
+    // 중복될 숫자 선택 (1개 중복 숫자 빈도 순위 기반, 룰렛 휠 방식)
     const singleDuplicateWeights = duplicateAnalysis.singleDuplicateDigitRanking.map(item => ({
       digit: parseInt(item.digit),
       weight: item.count
