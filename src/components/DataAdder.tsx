@@ -188,7 +188,8 @@ export default function DataAdder({ onDataAdded, lotteryData = [] }: DataAdderPr
             value={formData[1]}
             onChange={(e) => handleChange(1, e.target.value)}
             placeholder="조"
-            className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold"
+            className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold text-gray-900"
+            style={{ WebkitAppearance: 'none', appearance: 'none', color: '#111827', WebkitTextFillColor: '#111827' }}
             required
           />
           
@@ -205,7 +206,8 @@ export default function DataAdder({ onDataAdded, lotteryData = [] }: DataAdderPr
               value={value}
               onChange={(e) => handleChange(idx + 2, e.target.value)}
               placeholder={fieldLabels[idx + 2]}
-              className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold"
+              className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold text-gray-900"
+              style={{ WebkitAppearance: 'none', appearance: 'none', color: '#111827', WebkitTextFillColor: '#111827' }}
               required
             />
           ))}
@@ -222,7 +224,8 @@ export default function DataAdder({ onDataAdded, lotteryData = [] }: DataAdderPr
               value={value}
               onChange={(e) => handleChange(idx + 8, e.target.value)}
               placeholder={fieldLabels[idx + 8]}
-              className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold"
+              className="w-12 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold text-gray-900"
+              style={{ WebkitAppearance: 'none', appearance: 'none', color: '#111827', WebkitTextFillColor: '#111827' }}
               required
             />
           ))}
