@@ -44,8 +44,20 @@ export async function POST(request: NextRequest) {
     // 회차 순서대로 정렬 (내림차순 - 최신이 앞에)
     existingData.sort((a: number[], b: number[]) => b[0] - a[0]);
     
+    // 각 회차 배열을 한 줄로 표시하는 커스텀 포맷터
+    const formatJSON = (data: number[][]): string => {
+      const lines = data.map((row, index) => {
+        // 배열을 [ 숫자, 숫자, ... ] 형식으로 포맷팅
+        // 각 숫자를 쉼표와 공백으로 구분하고, 대괄호 안쪽에도 공백 추가
+        const numbersStr = row.map(num => num.toString()).join(', ');
+        const formattedRow = `[ ${numbersStr} ]`;
+        return index === data.length - 1 ? `  ${formattedRow}` : `  ${formattedRow},`;
+      });
+      return `[\n${lines.join('\n')}\n]`;
+    };
+    
     // 파일 저장
-    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), 'utf-8');
+    fs.writeFileSync(filePath, formatJSON(existingData), 'utf-8');
     
     return NextResponse.json({
       success: true,

@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Save, Download } from 'lucide-react';
+import { LotteryData } from '@/lib/dataParser';
 
 interface DataAdderProps {
   onDataAdded?: () => void;
+  lotteryData?: LotteryData[];
 }
 
-export default function DataAdder({ onDataAdded }: DataAdderProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function DataAdder({ onDataAdded, lotteryData = [] }: DataAdderProps) {
+  const [isOpen, setIsOpen] = useState(true);
   const [formData, setFormData] = useState<number[]>(() => {
     // 기본값: 14개 0으로 초기화
     return Array(14).fill(0);
@@ -16,6 +18,29 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 마지막 회차에 1을 더해서 자동 설정
+  useEffect(() => {
+    if (lotteryData && lotteryData.length > 0) {
+      // order 기준으로 정렬하여 마지막 회차 찾기
+      const sortedData = [...lotteryData].sort((a, b) => b.order - a.order);
+      const lastOrder = sortedData[0].order;
+      const nextOrder = lastOrder + 1;
+      
+      setFormData(prev => {
+        const newData = [...prev];
+        newData[0] = nextOrder;
+        return newData;
+      });
+    } else {
+      // 데이터가 없으면 1로 시작
+      setFormData(prev => {
+        const newData = [...prev];
+        newData[0] = 1;
+        return newData;
+      });
+    }
+  }, [lotteryData]);
 
   // 필드 이름 정의
   const fieldLabels = [
@@ -38,8 +63,11 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
   const handleChange = (index: number, value: string) => {
     const numValue = value === '' ? 0 : parseInt(value);
     
-    // 조 필드(index 1)는 1~5 범위만 허용
-    if (index === 1) {
+    // 회차 필드(index 0)는 자동 설정되므로 수정 불가
+    if (index === 0) {
+      return;
+    } else if (index === 1) {
+      // 조 필드(index 1)는 1~5 범위만 허용
       if (!isNaN(numValue) && numValue >= 1 && numValue <= 5) {
         const newData = [...formData];
         newData[index] = numValue;
@@ -60,11 +88,7 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 회차와 조 검증
-    if (formData[0] === 0) {
-      setMessage({ type: 'error', text: '회차는 0일 수 없습니다.' });
-      return;
-    }
+    // 조 검증 (회차는 자동 설정되므로 검증 불필요)
     if (formData[1] === 0 || formData[1] < 1 || formData[1] > 5) {
       setMessage({ type: 'error', text: '조는 1~5 사이의 값이어야 합니다.' });
       return;
@@ -86,8 +110,10 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
 
       if (response.ok) {
         setMessage({ type: 'success', text: result.message });
-        // 폼 초기화
-        setFormData(Array(14).fill(0));
+        // 폼 초기화 (회차는 자동으로 다시 설정됨)
+        const newFormData = Array(14).fill(0);
+        // 회차는 useEffect에서 자동으로 설정되므로 여기서는 초기화하지 않음
+        setFormData(newFormData);
         // 데이터 재로드 콜백 호출
         if (onDataAdded) {
           setTimeout(() => {
@@ -135,29 +161,22 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
         >
           <Download size={18} />
         </button>
-        {/* 데이터 추가 버튼 숨김 처리 */}
-        {/* <button
+        <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           title={isOpen ? '닫기' : '데이터 추가'}
         >
           <Plus size={18} />
-        </button> */}
+        </button>
       </div>
 
-      {isOpen && (
-        <form onSubmit={handleSubmit} className="space-y-4 mt-6">
-        {/* 첫 줄: 회차 */}
+      <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+        {/* 첫 줄: 회차 (자동 설정, 읽기 전용) */}
         <div className="flex gap-1.5 items-center">
-          <input
-            type="number"
-            min="0"
-            value={formData[0]}
-            onChange={(e) => handleChange(0, e.target.value)}
-            placeholder="회차"
-            className="w-14 px-1 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-base font-bold"
-            required
-          />
+          <div className="w-24 px-1 py-2 border border-gray-300 rounded-lg bg-gray-50 text-center text-base font-bold text-gray-700">
+            {formData[0]}
+          </div>
+          <span className="text-sm text-gray-500">회차 (자동 설정)</span>
         </div>
         
         {/* 두 번째 줄: 조 | 구분자 | 번호 6개 */}
@@ -235,8 +254,7 @@ export default function DataAdder({ onDataAdded }: DataAdderProps) {
           </div>
         )}
 
-        </form>
-      )}
+      </form>
     </div>
   );
 }

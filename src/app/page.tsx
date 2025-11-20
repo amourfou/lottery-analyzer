@@ -109,8 +109,7 @@ export default function Home() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
-            {/* 새로운 데이터 추가 - 숨김 처리 */}
-            {/* <DataAdder onDataAdded={handleDataAdded} /> */}
+            <DataAdder onDataAdded={handleDataAdded} lotteryData={lotteryData} />
             
             <DataLoader 
               onDataLoaded={handleDataLoaded}
