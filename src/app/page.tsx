@@ -85,12 +85,12 @@ export default function Home() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
+    <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div className="text-center mb-4 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
           🎯 연금복권 패턴 분석기
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-2">
           연금복권 데이터를 분석하여 패턴을 찾고 다음 숫자를 예측해보세요.
           트렌드 분석, 통계 분석, 분포 분석 등 다양한 기능을 제공합니다.
         </p>
@@ -107,9 +107,11 @@ export default function Home() {
           <p className="text-lg text-gray-600">연금복권 데이터를 로드하고 분석 중...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="space-y-6">
-            <DataAdder onDataAdded={handleDataAdded} lotteryData={lotteryData} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="hidden md:block">
+              <DataAdder onDataAdded={handleDataAdded} lotteryData={lotteryData} />
+            </div>
             
             <DataLoader 
               onDataLoaded={handleDataLoaded}
@@ -155,34 +157,34 @@ export default function Home() {
 
       {/* 트렌드 분석 */}
       {lotteryData.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-6 lg:mt-8">
           <TrendAnalysis lotteryData={lotteryData} />
         </div>
       )}
 
       {/* 중복 숫자 패턴 분석 */}
       {lotteryData.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-6 lg:mt-8">
           <DuplicatePatternAnalysis lotteryData={lotteryData} />
         </div>
       )}
 
       {/* 각 자리별 전이 패턴 분석 */}
       {lotteryData.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-6 lg:mt-8">
           <PositionTransitionAnalysis lotteryData={lotteryData} />
         </div>
       )}
 
       {/* 복권 데이터 표시 */}
       {lotteryData.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-6 lg:mt-8">
           <LotteryDataDisplay lotteryData={lotteryData} />
         </div>
       )}
 
-      <footer className="mt-12 text-center text-gray-500">
-        <p>© 2024 연금복권 패턴 분석기 - Next.js로 제작된 AI 기반 복권 분석 도구</p>
+      <footer className="mt-6 sm:mt-8 lg:mt-12 text-center text-gray-500 px-2">
+        <p className="text-xs sm:text-sm">© 2024 연금복권 패턴 분석기 - Next.js로 제작된 AI 기반 복권 분석 도구</p>
       </footer>
     </main>
   );

@@ -661,15 +661,15 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
   const sumAnalysis = analyzeDigitSum(lotteryData);
 
   return (
-    <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 rounded-lg shadow-lg p-6 mb-8 border-2 border-purple-200">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Sparkles className="text-purple-600" size={24} />
+    <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 lg:mb-8 border-2 border-purple-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3 sm:gap-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1">
+          <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
+            <Sparkles className="text-purple-600" size={20} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">AI 기반 숫자 예측</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">AI 기반 숫자 예측</h2>
+            <p className="text-xs sm:text-sm text-gray-600">
               자릿수 합계, 각 자리별 빈도, 중복 배치 패턴을 기반으로 예측된 숫자
             </p>
           </div>
@@ -677,7 +677,7 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="p-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3 sm:p-3.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-w-[44px] min-h-[44px] w-full sm:w-auto"
           title={isGenerating ? '생성 중...' : '숫자 생성'}
         >
           {isGenerating ? (
@@ -689,18 +689,18 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
       </div>
 
       {predictedNumbers && (
-        <div className="mt-6 p-6 bg-white rounded-lg border-2 border-purple-300">
+        <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-white rounded-lg border-2 border-purple-300">
           <div className="mb-4">
-            <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 flex-wrap">
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2 md:gap-3 mb-2 flex-wrap">
               {predictedNumbers.map((num, index) => (
                 <div key={index} className="flex flex-col items-center">
                   <div
-                    className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-lg sm:text-xl md:text-2xl font-bold shadow-lg animate-pulse"
+                    className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-base sm:text-lg md:text-xl lg:text-2xl font-bold shadow-lg animate-pulse"
                   >
                     {num}
                   </div>
                   {digitProbabilities[index] !== undefined && (
-                    <div className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-600">
+                    <div className="mt-1 text-[9px] sm:text-[10px] md:text-xs font-semibold text-gray-600">
                       {digitProbabilities[index].toFixed(1)}%
                     </div>
                   )}
@@ -710,8 +710,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
             
             {/* 직전 회차 정보 및 전이 확률 */}
             {lastRoundDigits && (
-              <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
-                <div className="text-sm font-semibold text-gray-700 mb-3 text-center">
+              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                <div className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">
                   직전 회차 대비 전이 확률
                 </div>
                 {/* 데스크톱: 가로 배치 */}
@@ -742,16 +742,16 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                     );
                   })}
                 </div>
-                {/* 모바일: 세로 배치 */}
-                <div className="md:hidden space-y-2">
+                {/* 모바일/태블릿: 세로 배치 */}
+                <div className="md:hidden space-y-1.5 sm:space-y-2">
                   {predictedNumbers.map((num, index) => {
                     const prevDigit = lastRoundDigits[index];
                     const transitionProb = transitionProbabilities[index] || 0;
                     
                     return (
                       <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-indigo-100">
-                        <span className="text-xs text-gray-500 w-12">{index + 1}번째</span>
-                        <div className={`flex-1 text-sm font-bold ${
+                        <span className="text-xs text-gray-500 w-12 sm:w-16">{index + 1}번째</span>
+                        <div className={`flex-1 text-xs sm:text-sm font-bold text-center ${
                           transitionProb >= 20 ? 'text-green-600' :
                           transitionProb >= 10 ? 'text-yellow-600' :
                           transitionProb >= 5 ? 'text-orange-600' :
@@ -763,43 +763,43 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                     );
                   })}
                 </div>
-                <div className="mt-3 text-xs text-gray-500 text-center">
+                <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-gray-500 text-center px-1">
                   직전 회차 각 자리 숫자에서 생성된 숫자로 전이될 확률
                 </div>
               </div>
             )}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-              <div className="text-sm font-semibold text-gray-700 mb-3 text-center">합계 정보</div>
-              <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+              <div className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 text-center">합계 정보</div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="text-center">
-                  <div className="text-xs text-gray-600 mb-1">자릿수 합계</div>
-                  <div className="text-xl font-bold text-green-600">
+                  <div className="text-[10px] sm:text-xs text-gray-600 mb-1">자릿수 합계</div>
+                  <div className="text-lg sm:text-xl font-bold text-green-600">
                     {predictionSum}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-600 mb-1">평균 합계</div>
-                  <div className="text-xl font-bold text-purple-600">
+                  <div className="text-[10px] sm:text-xs text-gray-600 mb-1">평균 합계</div>
+                  <div className="text-lg sm:text-xl font-bold text-purple-600">
                     {sumAnalysis.statistics.avgSum.toFixed(1)}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-600 mb-1">합계 차이</div>
-                  <div className={`text-xl font-bold ${Math.abs(predictionSum! - sumAnalysis.statistics.avgSum) <= 5 ? 'text-green-600' : 'text-orange-600'}`}>
+                  <div className="text-[10px] sm:text-xs text-gray-600 mb-1">합계 차이</div>
+                  <div className={`text-lg sm:text-xl font-bold ${Math.abs(predictionSum! - sumAnalysis.statistics.avgSum) <= 5 ? 'text-green-600' : 'text-orange-600'}`}>
                     {predictionSum && (predictionSum - sumAnalysis.statistics.avgSum).toFixed(1)}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-              <div className="text-sm font-semibold text-gray-700 mb-2">배치 패턴</div>
+            <div className="text-center p-3 sm:p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">배치 패턴</div>
               {predictionPattern ? (
                 <>
-                  <div className="flex items-center justify-center gap-1 mb-2">
-                    <span className="text-xl font-bold text-gray-800 font-mono">
+                  <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-2">
+                    <span className="text-base sm:text-lg md:text-xl font-bold text-gray-800 font-mono">
                       {predictionPattern.split('').map((char, i) => {
                         let colorClass = 'text-gray-400';
                         if (char === 'O') colorClass = 'text-red-600';
@@ -813,12 +813,12 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
                     </span>
                   </div>
                   {patternRank !== null && patternTotalCount !== null && (
-                    <div className="text-xs font-bold text-purple-600 mt-1">
+                    <div className="text-[10px] sm:text-xs font-bold text-purple-600 mt-1">
                       패턴 순위: {patternRank}위 / {patternTotalCount}개 패턴 중
                     </div>
                   )}
                   {duplicateDigit !== null && duplicateDigitRank !== null && duplicateDigitTotalCount !== null && (
-                    <div className="text-xs font-bold text-orange-600 mt-1">
+                    <div className="text-[10px] sm:text-xs font-bold text-orange-600 mt-1">
                       중복 숫자 {duplicateDigit}: {duplicateDigitRank}위 / {duplicateDigitTotalCount}개 중
                     </div>
                   )}
@@ -828,8 +828,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
           </div>
           
           {predictionSum && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-xs text-gray-600 text-center">
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
+              <div className="text-[10px] sm:text-xs text-gray-600 text-center">
                 {predictionSum < sumAnalysis.statistics.avgSum - 5 && '⚠️ 합계가 평균보다 낮습니다'}
                 {predictionSum >= sumAnalysis.statistics.avgSum - 5 && predictionSum <= sumAnalysis.statistics.avgSum + 5 && '✅ 합계가 평균 범위 내입니다'}
                 {predictionSum > sumAnalysis.statistics.avgSum + 5 && '⚠️ 합계가 평균보다 높습니다'}
