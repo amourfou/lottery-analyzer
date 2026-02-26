@@ -9,10 +9,19 @@ interface PredictionGeneratorProps {
   analyzedNumbers?: number[]; // 현재 분석에 사용된 숫자 배열 (보너스 포함 여부 반영)
 }
 
+export interface PredictionOptions {
+  /** 사용자가 선택한 배치 패턴 (예: 'OXXXXO'). null이면 자동(가중치 랜덤) */
+  selectedPattern?: string | null;
+  /** 사용자가 선택한 중복 숫자 (0~9). null이면 자동(가중치 랜덤) */
+  selectedDuplicateDigit?: number | null;
+}
+
 /**
  * 분석 결과를 기반으로 랜덤 숫자 생성
+ * @param options.selectedPattern - 지정 시 2개 중복 + 해당 배치 패턴으로 생성
+ * @param options.selectedDuplicateDigit - 지정 시 중복될 숫자로 사용
  */
-function generatePrediction(lotteryData: LotteryData[]): number[] {
+function generatePrediction(lotteryData: LotteryData[], options?: PredictionOptions): number[] {
   if (lotteryData.length === 0) {
     // 데이터가 없으면 완전 랜덤
     return Array.from({ length: 6 }, () => Math.floor(Math.random() * 10));
@@ -66,51 +75,63 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
     selectedFrequency = frequencies[Math.floor(Math.random() * frequencies.length)];
   }
   
-  // 배치 패턴을 고려한 숫자 생성 (1개 중복 패턴은 selectedFrequency가 2일 때만)
-  const usePositionPattern = selectedFrequency === 2 && Math.random() < 0.5 && positionPatternAnalysis.patternDetails.length > 0;
+  // 사용자가 배치 패턴을 지정했으면 2중복 + 배치 패턴 모드로 고정
+  const forcePattern = options?.selectedPattern != null && options.selectedPattern !== '';
+  const validPattern = forcePattern && positionPatternAnalysis.patternDetails.some(p => p.pattern === options!.selectedPattern);
+  
+  // 배치 패턴을 고려한 숫자 생성 (1개 중복 패턴은 selectedFrequency가 2일 때만, 또는 사용자가 패턴 지정 시)
+  const usePositionPattern = (validPattern || (selectedFrequency === 2 && Math.random() < 0.5)) && positionPatternAnalysis.patternDetails.length > 0;
+  const effectiveFrequency = validPattern ? 2 : selectedFrequency;
   
   let generatedDigits: number[];
   
   if (usePositionPattern) {
     // 배치 패턴 기반 생성
-    // 패턴 빈도를 가중치로 사용하는 룰렛 휠 방식 (빈도가 높을수록 더 잘 선택됨)
-    const patternWeights = positionPatternAnalysis.patternDetails.map(p => ({
-      pattern: p.pattern,
-      weight: p.count
-    }));
-    
-    const totalPatternWeight = patternWeights.reduce((sum, p) => sum + p.weight, 0);
-    let patternRandom = Math.random() * totalPatternWeight;
-    let selectedPattern = patternWeights[0].pattern;
-    
-    for (const { pattern, weight } of patternWeights) {
-      patternRandom -= weight;
-      if (patternRandom <= 0) {
-        selectedPattern = pattern;
-        break;
-      }
-    }
-    
-    // 중복될 숫자 선택 (1개 중복 숫자 빈도 순위 기반, 룰렛 휠 방식)
-    const singleDuplicateWeights = duplicateAnalysis.singleDuplicateDigitRanking.map(item => ({
-      digit: parseInt(item.digit),
-      weight: item.count
-    }));
-    
-    const totalDuplicateWeight = singleDuplicateWeights.reduce((sum, d) => sum + d.weight, 0);
-    let duplicateRandom = totalDuplicateWeight > 0 ? Math.random() * totalDuplicateWeight : Math.random() * 10;
-    let duplicateDigit = 0;
-    
-    if (singleDuplicateWeights.length > 0) {
-      for (const { digit, weight } of singleDuplicateWeights) {
-        duplicateRandom -= weight;
-        if (duplicateRandom <= 0) {
-          duplicateDigit = digit;
+    let selectedPattern: string;
+    if (validPattern && options!.selectedPattern) {
+      selectedPattern = options!.selectedPattern;
+    } else {
+      // 패턴 빈도를 가중치로 사용하는 룰렛 휠 방식 (빈도가 높을수록 더 잘 선택됨)
+      const patternWeights = positionPatternAnalysis.patternDetails.map(p => ({
+        pattern: p.pattern,
+        weight: p.count
+      }));
+      const totalPatternWeight = patternWeights.reduce((sum, p) => sum + p.weight, 0);
+      let patternRandom = Math.random() * totalPatternWeight;
+      selectedPattern = patternWeights[0].pattern;
+      for (const { pattern, weight } of patternWeights) {
+        patternRandom -= weight;
+        if (patternRandom <= 0) {
+          selectedPattern = pattern;
           break;
         }
       }
+    }
+    
+    // 중복될 숫자 선택: 사용자 지정 또는 1개 중복 숫자 빈도 순위 기반 룰렛 휠
+    let duplicateDigit: number;
+    const userDigit = options?.selectedDuplicateDigit;
+    if (userDigit !== undefined && userDigit !== null && userDigit >= 0 && userDigit <= 9) {
+      duplicateDigit = userDigit;
     } else {
-      duplicateDigit = Math.floor(Math.random() * 10);
+      const singleDuplicateWeights = duplicateAnalysis.singleDuplicateDigitRanking.map(item => ({
+        digit: parseInt(item.digit),
+        weight: item.count
+      }));
+      const totalDuplicateWeight = singleDuplicateWeights.reduce((sum, d) => sum + d.weight, 0);
+      let duplicateRandom = totalDuplicateWeight > 0 ? Math.random() * totalDuplicateWeight : Math.random() * 10;
+      duplicateDigit = 0;
+      if (singleDuplicateWeights.length > 0) {
+        for (const { digit, weight } of singleDuplicateWeights) {
+          duplicateRandom -= weight;
+          if (duplicateRandom <= 0) {
+            duplicateDigit = digit;
+            break;
+          }
+        }
+      } else {
+        duplicateDigit = Math.floor(Math.random() * 10);
+      }
     }
     
     // 패턴에 따라 숫자 배치
@@ -169,7 +190,7 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
     }
   } else {
     // 중복 빈도에 따라 숫자 생성
-    if (selectedFrequency === 0) {
+    if (effectiveFrequency === 0) {
       // 중복 없음: 모든 숫자가 다름
       const usedDigits = new Set<number>();
       generatedDigits = [];
@@ -227,8 +248,12 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
       }
     } else {
       // selectedFrequency 개의 중복을 가지는 숫자 생성
-      // 중복될 숫자 선택 (각 자리별 빈도를 고려)
+      // 중복될 숫자 선택: 사용자 지정 또는 각 자리별 빈도 기반
       const duplicateDigit = (() => {
+        const userDigit = options?.selectedDuplicateDigit;
+        if (userDigit !== undefined && userDigit !== null && userDigit >= 0 && userDigit <= 9) {
+          return userDigit;
+        }
         const posData = positionFreq[0]; // 첫 번째 자리 기준으로 선택
         const weights: { digit: number; weight: number }[] = [];
         
@@ -254,7 +279,7 @@ function generatePrediction(lotteryData: LotteryData[]): number[] {
       
       // 중복 위치 선택
       const duplicatePositions = new Set<number>();
-      while (duplicatePositions.size < selectedFrequency) {
+      while (duplicatePositions.size < effectiveFrequency) {
         duplicatePositions.add(Math.floor(Math.random() * 6));
       }
       
@@ -436,6 +461,10 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
   const [transitionProbabilities, setTransitionProbabilities] = useState<number[]>([]); // 각 자리별 전이 확률
   const [lastRoundDigits, setLastRoundDigits] = useState<number[] | null>(null); // 직전 회차의 각 자리 숫자
   const [isGenerating, setIsGenerating] = useState(false);
+  /** 사용자 선택: 배치 패턴 (null = 자동) */
+  const [selectedPatternOption, setSelectedPatternOption] = useState<string | null>(null);
+  /** 사용자 선택: 중복 숫자 (null = 자동) */
+  const [selectedDuplicateDigitOption, setSelectedDuplicateDigitOption] = useState<number | null>(null);
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -449,7 +478,10 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
       
       // 보너스 포함 여부에 관계없이, 현재 분석에 사용된 lotteryData를 그대로 사용
       // (lotteryData는 이미 현재 분석에 사용된 데이터이므로)
-      const numbers = generatePrediction(lotteryData);
+      const numbers = generatePrediction(lotteryData, {
+        selectedPattern: selectedPatternOption,
+        selectedDuplicateDigit: selectedDuplicateDigitOption
+      });
       const sum = numbers.reduce((s, n) => s + n, 0);
       
       // 생성된 숫자의 패턴 분석
@@ -659,6 +691,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
   }
 
   const sumAnalysis = analyzeDigitSum(lotteryData);
+  const positionPatternAnalysis = analyzeDuplicatePositionPatterns(lotteryData);
+  const duplicateAnalysisForOptions = analyzeDuplicatePatterns(lotteryData);
 
   return (
     <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 lg:mb-8 border-2 border-purple-200">
@@ -686,6 +720,45 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
             <Dice6 size={20} />
           )}
         </button>
+      </div>
+
+      {/* 배치 패턴 / 중복 숫자 선택 옵션 */}
+      <div className="mb-4 p-3 sm:p-4 bg-white/70 rounded-lg border border-purple-200">
+        <div className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">예측 옵션 (선택 시 해당 항목으로 고정)</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label htmlFor="pattern-combo" className="block text-[10px] sm:text-xs text-gray-600 mb-1.5">배치 패턴</label>
+            <select
+              id="pattern-combo"
+              value={selectedPatternOption ?? ''}
+              onChange={(e) => setSelectedPatternOption(e.target.value === '' ? null : e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            >
+              <option value="">자동</option>
+              {positionPatternAnalysis.patternDetails.map((p) => (
+                <option key={p.pattern} value={p.pattern} title={`${p.count}회, ${p.percentage.toFixed(1)}%`}>
+                  {p.pattern} ({p.count}회)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="digit-combo" className="block text-[10px] sm:text-xs text-gray-600 mb-1.5">중복 숫자</label>
+            <select
+              id="digit-combo"
+              value={selectedDuplicateDigitOption !== null ? String(selectedDuplicateDigitOption) : ''}
+              onChange={(e) => setSelectedDuplicateDigitOption(e.target.value === '' ? null : parseInt(e.target.value, 10))}
+              className="w-full px-3 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            >
+              <option value="">자동</option>
+              {duplicateAnalysisForOptions.singleDuplicateDigitRanking.map((item) => (
+                <option key={item.digit} value={item.digit} title={`${item.count}회`}>
+                  {item.digit} ({item.count}회)
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {predictedNumbers && (
