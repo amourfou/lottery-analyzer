@@ -145,8 +145,8 @@ export interface DuplicatePatternAnalysisResult {
   duplicateCountDistribution: Record<number, number>;
   // 중복 개수별 비율
   duplicateCountRatio: Record<number, number>;
-  // 1개만 중복된 경우, 어떤 숫자가 중복되었는지 카운트
-  singleDuplicateDigitRanking: Array<{ digit: string; count: number }>;
+  // 1개만 중복된 경우, 어떤 숫자가 중복되었는지 카운트 (absenceCount: 연속 미출현 회차)
+  singleDuplicateDigitRanking: Array<{ digit: string; count: number; absenceCount: number }>;
   // 전체 데이터 개수
   totalCount: number;
 }
@@ -262,12 +262,38 @@ export function analyzeDuplicatePatterns(lotteryData: LotteryData[]): DuplicateP
     const count = parseInt(key);
     duplicateCountRatio[count] = duplicateCountDistribution[count] / totalCount;
   });
-  
+
+  // 연속 미출현: 최근 회차부터 역순으로, 해당 숫자가 2중복으로 나올 때까지의 회차 수
+  const sortedNewestFirst = [...lotteryData].sort((a, b) => b.order - a.order);
+  const getSingleDuplicateDigit = (data: LotteryData): string | null => {
+    const digitString = data.numbers.map(n => n.toString()).join('').padStart(6, '0');
+    const digitCount: Record<string, number> = {};
+    digitString.split('').forEach(d => { digitCount[d] = (digitCount[d] || 0) + 1; });
+    const duplicates = findDuplicateDigits(digitString);
+    if (duplicates.length !== 1) return null;
+    const d = duplicates[0];
+    if (digitCount[d] !== 2) return null;
+    return d;
+  };
+  const absenceByDigit: Record<string, number> = {};
+  for (const digit of Object.keys(singleDuplicateDigitCount)) {
+    let count = 0;
+    for (const data of sortedNewestFirst) {
+      if (getSingleDuplicateDigit(data) === digit) break;
+      count++;
+    }
+    absenceByDigit[digit] = count;
+  }
+
   // 1개 중복 숫자별 순위 매기기 (빈도순 정렬)
   const singleDuplicateDigitRanking = Object.entries(singleDuplicateDigitCount)
-    .map(([digit, count]) => ({ digit, count }))
+    .map(([digit, count]) => ({
+      digit,
+      count,
+      absenceCount: absenceByDigit[digit] ?? sortedNewestFirst.length
+    }))
     .sort((a, b) => b.count - a.count);
-  
+
   return {
     duplicateCountDistribution,
     duplicateCountRatio,
@@ -355,6 +381,7 @@ export interface DuplicatePositionPatternAnalysis {
     count: number;
     percentage: number;
     examples: number[]; // 예시 회차 (최대 5개)
+    absenceCount: number; // 연속 미출현: 최근 회차부터 세어 해당 패턴이 나올 때까지의 회차 수
   }>;
   totalCount: number;
 }
@@ -413,13 +440,38 @@ export function analyzeDuplicatePositionPatterns(lotteryData: LotteryData[]): Du
     patternRatio[pattern] = patternDistribution[pattern] / totalCount;
   });
   
+  // 연속 미출현: 최근 회차부터 역순으로 세어, 해당 패턴이 나올 때까지의 회차 수
+  const sortedNewestFirst = [...lotteryData].sort((a, b) => b.order - a.order);
+  const getPatternOfRound = (data: LotteryData): string | null => {
+    const digitString = data.numbers.map(n => n.toString()).join('').padStart(6, '0');
+    const digits = digitString.split('');
+    const digitCount: Record<string, number> = {};
+    digits.forEach(d => { digitCount[d] = (digitCount[d] || 0) + 1; });
+    const duplicates = findDuplicateDigits(digitString);
+    if (duplicates.length !== 1) return null;
+    const duplicateDigit = duplicates[0];
+    if (digitCount[duplicateDigit] !== 2) return null;
+    return digits.map(d => d === duplicateDigit ? 'O' : 'X').join('');
+  };
+  const absenceCountByPattern: Record<string, number> = {};
+  for (const pattern of Object.keys(patternDistribution)) {
+    let count = 0;
+    for (const data of sortedNewestFirst) {
+      const roundPattern = getPatternOfRound(data);
+      if (roundPattern === pattern) break;
+      count++;
+    }
+    absenceCountByPattern[pattern] = count;
+  }
+
   // 패턴별 상세 정보 생성 (빈도순 정렬)
   const patternDetails = Object.entries(patternDistribution)
     .map(([pattern, count]) => ({
       pattern,
       count,
       percentage: patternRatio[pattern] * 100,
-      examples: patternExamples[pattern] || []
+      examples: patternExamples[pattern] || [],
+      absenceCount: absenceCountByPattern[pattern] ?? sortedNewestFirst.length
     }))
     .sort((a, b) => b.count - a.count);
   
@@ -774,6 +826,58 @@ export function analyzePreviousRoundComparison(lotteryData: LotteryData[]): Prev
       outOfRangeRatio
     },
     totalComparisons
+  };
+}
+
+/**
+ * 맨 앞자리(첫 자리) 직전 회차 대비 클/작음 비교 결과
+ */
+export interface FirstDigitComparisonResult {
+  increaseCount: number;
+  decreaseCount: number;
+  sameCount: number;
+  increaseRatio: number;
+  decreaseRatio: number;
+  sameRatio: number;
+  totalComparisons: number;
+}
+
+/**
+ * 맨 앞자리 숫자만 직전 회차와 비교 (다음 회차 첫 자리가 직전보다 클/작을 비율)
+ * @param lotteryData - 파싱된 복권 데이터
+ */
+export function analyzeFirstDigitComparison(lotteryData: LotteryData[]): FirstDigitComparisonResult {
+  if (lotteryData.length < 2) {
+    return {
+      increaseCount: 0,
+      decreaseCount: 0,
+      sameCount: 0,
+      increaseRatio: 0,
+      decreaseRatio: 0,
+      sameRatio: 0,
+      totalComparisons: 0
+    };
+  }
+  const sortedData = [...lotteryData].sort((a, b) => a.order - b.order);
+  let increaseCount = 0;
+  let decreaseCount = 0;
+  let sameCount = 0;
+  for (let i = 1; i < sortedData.length; i++) {
+    const currFirst = sortedData[i].numbers[0];
+    const prevFirst = sortedData[i - 1].numbers[0];
+    if (currFirst > prevFirst) increaseCount++;
+    else if (currFirst < prevFirst) decreaseCount++;
+    else sameCount++;
+  }
+  const total = sortedData.length - 1;
+  return {
+    increaseCount,
+    decreaseCount,
+    sameCount,
+    increaseRatio: total > 0 ? increaseCount / total : 0,
+    decreaseRatio: total > 0 ? decreaseCount / total : 0,
+    sameRatio: total > 0 ? sameCount / total : 0,
+    totalComparisons: total
   };
 }
 

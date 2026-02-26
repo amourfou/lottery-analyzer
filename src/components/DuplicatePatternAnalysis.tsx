@@ -174,6 +174,9 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                   </div>
                   <div className="text-xl font-bold text-gray-800 mb-1">숫자 {item.digit}</div>
                   <div className="text-lg font-bold text-blue-600 mb-1">{item.count}회</div>
+                  <div className="text-xs text-amber-600 font-medium" title="최근 몇 회 동안 2중복으로 출현 안 함">
+                    연속 미출현 {item.absenceCount}회
+                  </div>
                   <div className="text-xs text-gray-500">
                     ({(item.count / analysis.totalCount * 100).toFixed(1)}%)
                   </div>
@@ -233,7 +236,10 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                                 <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
                                   <p className="font-bold text-gray-800">패턴: {data.pattern}</p>
                                   <p className="text-blue-600">
-                                    개수: <span className="font-bold">{data.count}회</span>
+                                    출현: <span className="font-bold">{data.count}회</span>
+                                  </p>
+                                  <p className="text-amber-600">
+                                    연속 미출현: <span className="font-bold">{data.absenceCount}회</span>
                                   </p>
                                   <p className="text-green-600">
                                     비율: <span className="font-bold">{data.percentage.toFixed(2)}%</span>
@@ -265,6 +271,7 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">순위</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">패턴</th>
                           <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">횟수</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">연속 미출현</th>
                           <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">비율</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">예시 회차</th>
                         </tr>
@@ -295,6 +302,9 @@ export default function DuplicatePatternAnalysis({ lotteryData }: DuplicatePatte
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-lg font-bold text-blue-600">{pattern.count}회</span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm font-semibold text-amber-600" title="최근 몇 회 동안 출현 안 함">{pattern.absenceCount}회</span>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm text-gray-600">{pattern.percentage.toFixed(2)}%</span>

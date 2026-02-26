@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency, analyzePreviousRoundComparison, analyzePositionTransition } from '@/lib/dataParser';
-import { Sparkles, RefreshCw, Dice6 } from 'lucide-react';
+import { LotteryData, analyzePositionFrequency, analyzeDigitSum, analyzeDuplicatePatterns, analyzeDuplicatePositionPatterns, analyzeDuplicateFrequency, analyzePreviousRoundComparison, analyzePositionTransition, analyzeFirstDigitComparison } from '@/lib/dataParser';
+import { Sparkles, RefreshCw, Dice6, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface PredictionGeneratorProps {
   lotteryData: LotteryData[];
@@ -736,8 +736,8 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
             >
               <option value="">자동</option>
               {positionPatternAnalysis.patternDetails.map((p) => (
-                <option key={p.pattern} value={p.pattern} title={`${p.count}회, ${p.percentage.toFixed(1)}%`}>
-                  {p.pattern} ({p.count}회)
+                <option key={p.pattern} value={p.pattern} title={`출현 ${p.count}회, 최근 ${p.absenceCount}회 연속 미출현, ${p.percentage.toFixed(1)}%`}>
+                  {p.pattern} (출현 {p.count}회 / 연속 미출현 {p.absenceCount}회)
                 </option>
               ))}
             </select>
@@ -752,14 +752,54 @@ export default function PredictionGenerator({ lotteryData, analyzedNumbers }: Pr
             >
               <option value="">자동</option>
               {duplicateAnalysisForOptions.singleDuplicateDigitRanking.map((item) => (
-                <option key={item.digit} value={item.digit} title={`${item.count}회`}>
-                  {item.digit} ({item.count}회)
+                <option key={item.digit} value={item.digit} title={`출현 ${item.count}회, 최근 ${item.absenceCount}회 연속 미출현`}>
+                  {item.digit} (출현 {item.count}회 / 연속 미출현 {item.absenceCount}회)
                 </option>
               ))}
             </select>
           </div>
         </div>
       </div>
+
+      {/* 맨 앞자리 숫자가 직전보다 클/작을 확률 (과거 데이터 기준) */}
+      {(() => {
+        const comparison = analyzeFirstDigitComparison(lotteryData);
+        const total = comparison.totalComparisons;
+        if (total === 0) return null;
+        const upPct = (comparison.increaseRatio * 100);
+        const downPct = (comparison.decreaseRatio * 100);
+        const samePct = (comparison.sameRatio * 100);
+        return (
+          <div className="mb-4 p-3 sm:p-4 bg-white/70 rounded-lg border border-purple-200">
+            <div className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">맨 앞자리 숫자가 직전보다 클/작을 확률</div>
+            <p className="text-[10px] sm:text-xs text-gray-500 mb-2">첫 번째 자리만 비교, 과거 {total}회 기준</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
+                <TrendingUp className="text-green-600 shrink-0" size={20} />
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-600">맨 앞자리가 직전보다 클 확률</div>
+                  <div className="text-lg sm:text-xl font-bold text-green-600">{upPct.toFixed(1)}%</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-2 sm:p-3 bg-red-50 rounded-lg border border-red-200">
+                <TrendingDown className="text-red-600 shrink-0" size={20} />
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-600">맨 앞자리가 직전보다 작을 확률</div>
+                  <div className="text-lg sm:text-xl font-bold text-red-600">{downPct.toFixed(1)}%</div>
+                </div>
+              </div>
+              {samePct > 0 && (
+                <div className="flex items-center gap-2 p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-200 col-span-2 sm:col-span-1">
+                  <div>
+                    <div className="text-[10px] sm:text-xs text-gray-600">맨 앞자리가 직전과 동일할 확률</div>
+                    <div className="text-lg sm:text-xl font-bold text-gray-600">{samePct.toFixed(1)}%</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {predictedNumbers && (
         <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-white rounded-lg border-2 border-purple-300">
