@@ -339,102 +339,88 @@ function generatePrediction(lotteryData: LotteryData[], options?: PredictionOpti
     }
   }
   
-  let currentSum = generatedDigits.reduce((sum, d) => sum + d, 0);
+  // 사용자가 배치 패턴 또는 중복 숫자를 지정했으면, 이후 합계/직전회차 조정을 하지 않아 선택이 유지되도록 함
+  const userSpecifiedOptions = (options?.selectedPattern != null && options.selectedPattern !== '') ||
+    (options?.selectedDuplicateDigit != null && options.selectedDuplicateDigit >= 0 && options.selectedDuplicateDigit <= 9);
 
-  // 합계 조정 (목표 합계에 근접하도록)
-  const maxAttempts = 100;
-  for (let attempt = 0; attempt < maxAttempts && Math.abs(currentSum - targetSum) > 3; attempt++) {
-    const diff = targetSum - currentSum;
-    const adjustCount = Math.min(Math.abs(diff), 6);
-    
-    for (let i = 0; i < adjustCount; i++) {
-      const randomPos = Math.floor(Math.random() * 6);
-      const oldDigit = generatedDigits[randomPos];
-      
-      if (diff > 0) {
-        // 합계가 낮으면 증가 (최대 9)
-        if (oldDigit < 9) {
-          generatedDigits[randomPos] = Math.min(9, oldDigit + 1);
-        }
-      } else {
-        // 합계가 높으면 감소 (최소 0)
-        if (oldDigit > 0) {
-          generatedDigits[randomPos] = Math.max(0, oldDigit - 1);
+  if (!userSpecifiedOptions) {
+    let currentSum = generatedDigits.reduce((sum, d) => sum + d, 0);
+
+    // 합계 조정 (목표 합계에 근접하도록)
+    const maxAttempts = 100;
+    for (let attempt = 0; attempt < maxAttempts && Math.abs(currentSum - targetSum) > 3; attempt++) {
+      const diff = targetSum - currentSum;
+      const adjustCount = Math.min(Math.abs(diff), 6);
+
+      for (let i = 0; i < adjustCount; i++) {
+        const randomPos = Math.floor(Math.random() * 6);
+        const oldDigit = generatedDigits[randomPos];
+
+        if (diff > 0) {
+          if (oldDigit < 9) {
+            generatedDigits[randomPos] = Math.min(9, oldDigit + 1);
+          }
+        } else {
+          if (oldDigit > 0) {
+            generatedDigits[randomPos] = Math.max(0, oldDigit - 1);
+          }
         }
       }
+
+      currentSum = generatedDigits.reduce((sum, d) => sum + d, 0);
+      if (Math.abs(currentSum - targetSum) <= 3) break;
     }
-    
-    currentSum = generatedDigits.reduce((sum, d) => sum + d, 0);
-    
-    // 목표에 도달했으면 중단
-    if (Math.abs(currentSum - targetSum) <= 3) break;
-  }
 
-  // 합계가 여전히 범위를 벗어나면 재조정
-  if (currentSum < 0 || currentSum > 54) {
-    generatedDigits = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10));
-  }
+    // 합계가 여전히 범위를 벗어나면 재조정
+    if (currentSum < 0 || currentSum > 54) {
+      generatedDigits = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10));
+    }
 
-  // 마지막 회차와의 차이 범위 제한
-  // 표준편차 기반 범위 사용 (1.5 표준편차 = 약 87% 데이터 포함, 적절한 수준)
-  const stdDeviation = previousComparison.changeStatistics.stdDeviation;
-  
-  // 전체 변화량의 평균 계산 (직전 회차 비교 데이터에서)
-  const sortedDataForAvg = [...lotteryData].sort((a, b) => a.order - b.order);
-  const allChangesForAvg: number[] = [];
-  for (let i = 1; i < sortedDataForAvg.length; i++) {
-    const change = sortedDataForAvg[i].combinedNumber - sortedDataForAvg[i - 1].combinedNumber;
-    allChangesForAvg.push(change);
-  }
-  const avgAllChange = allChangesForAvg.length > 0
-    ? allChangesForAvg.reduce((sum, val) => sum + val, 0) / allChangesForAvg.length
-    : 0;
-  
-  // 1.5 표준편차 범위 사용 (통계적으로 약 87% 데이터 포함, 적절한 수준)
-  const stdDevMultiplier = 1.5; // 1.5 표준편차 사용 (68%보다 넓고 95%보다 좁음)
-  const stdDevLowerBound = avgAllChange - (stdDeviation * stdDevMultiplier);
-  const stdDevUpperBound = avgAllChange + (stdDeviation * stdDevMultiplier);
-  
-  // 표준편차 범위와 최소/최대 범위의 교집합 사용 (표준편차 범위가 더 타이트하므로 이를 우선)
-  const effectiveLowerBound = Math.max(minChange, stdDevLowerBound);
-  const effectiveUpperBound = Math.min(maxChange, stdDevUpperBound);
-  
-  if (lastRoundNumber !== null && sortedData.length > 0 && previousComparison.totalComparisons > 0 && stdDeviation > 0) {
-    // 생성된 숫자를 combinedNumber로 변환 (6자리 배열을 숫자로 변환)
-    const generatedNumber = parseInt(generatedDigits.map(d => d.toString()).join('').padStart(6, '0'));
-    const difference = generatedNumber - lastRoundNumber;
-    
-    // 차이가 범위를 벗어나면 조정
-    if (difference < effectiveLowerBound || difference > effectiveUpperBound) {
-      // 목표 차이 계산 (전체 평균 변화량 사용)
-      const targetDifference = Math.round(avgAllChange);
-      const targetNumber = lastRoundNumber + targetDifference;
-      
-      // 목표 숫자를 6자리 배열로 변환
-      const targetString = Math.max(0, Math.min(999999, targetNumber)).toString().padStart(6, '0');
-      const targetDigits = targetString.split('').map(Number);
-      
-      // 각 자리가 0~9 범위 내에 있고, 차이가 범위 내에 있는지 확인
-      const targetCombinedNumber = parseInt(targetDigits.map(d => d.toString()).join('').padStart(6, '0'));
-      const targetDiff = targetCombinedNumber - lastRoundNumber;
-      
-      if (targetDigits.every(d => d >= 0 && d <= 9) && targetDiff >= effectiveLowerBound && targetDiff <= effectiveUpperBound) {
-        generatedDigits = targetDigits;
-      } else {
-        // 목표 숫자로 조정이 안 되면, 범위 내의 랜덤한 차이로 생성
-        const maxAttempts = 100;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const randomDiffValue = Math.floor(Math.random() * (effectiveUpperBound - effectiveLowerBound + 1)) + effectiveLowerBound;
-          const randomTargetNumber = lastRoundNumber + randomDiffValue;
-          const randomTargetString = Math.max(0, Math.min(999999, randomTargetNumber)).toString().padStart(6, '0');
-          const randomTargetDigits = randomTargetString.split('').map(Number);
-          
-          if (randomTargetDigits.every(d => d >= 0 && d <= 9)) {
-            const randomCombinedNumber = parseInt(randomTargetDigits.map(d => d.toString()).join('').padStart(6, '0'));
-            const actualDiff = randomCombinedNumber - lastRoundNumber;
-            if (actualDiff >= effectiveLowerBound && actualDiff <= effectiveUpperBound) {
-              generatedDigits = randomTargetDigits;
-              break;
+    // 마지막 회차와의 차이 범위 제한
+    const stdDeviation = previousComparison.changeStatistics.stdDeviation;
+    const sortedDataForAvg = [...lotteryData].sort((a, b) => a.order - b.order);
+    const allChangesForAvg: number[] = [];
+    for (let i = 1; i < sortedDataForAvg.length; i++) {
+      const change = sortedDataForAvg[i].combinedNumber - sortedDataForAvg[i - 1].combinedNumber;
+      allChangesForAvg.push(change);
+    }
+    const avgAllChange = allChangesForAvg.length > 0
+      ? allChangesForAvg.reduce((sum, val) => sum + val, 0) / allChangesForAvg.length
+      : 0;
+    const stdDevMultiplier = 1.5;
+    const stdDevLowerBound = avgAllChange - (stdDeviation * stdDevMultiplier);
+    const stdDevUpperBound = avgAllChange + (stdDeviation * stdDevMultiplier);
+    const effectiveLowerBound = Math.max(minChange, stdDevLowerBound);
+    const effectiveUpperBound = Math.min(maxChange, stdDevUpperBound);
+
+    if (lastRoundNumber !== null && sortedData.length > 0 && previousComparison.totalComparisons > 0 && stdDeviation > 0) {
+      const generatedNumber = parseInt(generatedDigits.map(d => d.toString()).join('').padStart(6, '0'));
+      const difference = generatedNumber - lastRoundNumber;
+
+      if (difference < effectiveLowerBound || difference > effectiveUpperBound) {
+        const targetDifference = Math.round(avgAllChange);
+        const targetNumber = lastRoundNumber + targetDifference;
+        const targetString = Math.max(0, Math.min(999999, targetNumber)).toString().padStart(6, '0');
+        const targetDigits = targetString.split('').map(Number);
+        const targetCombinedNumber = parseInt(targetDigits.map(d => d.toString()).join('').padStart(6, '0'));
+        const targetDiff = targetCombinedNumber - lastRoundNumber;
+
+        if (targetDigits.every(d => d >= 0 && d <= 9) && targetDiff >= effectiveLowerBound && targetDiff <= effectiveUpperBound) {
+          generatedDigits = targetDigits;
+        } else {
+          for (let attempt = 0; attempt < 100; attempt++) {
+            const randomDiffValue = Math.floor(Math.random() * (effectiveUpperBound - effectiveLowerBound + 1)) + effectiveLowerBound;
+            const randomTargetNumber = lastRoundNumber + randomDiffValue;
+            const randomTargetString = Math.max(0, Math.min(999999, randomTargetNumber)).toString().padStart(6, '0');
+            const randomTargetDigits = randomTargetString.split('').map(Number);
+
+            if (randomTargetDigits.every(d => d >= 0 && d <= 9)) {
+              const randomCombinedNumber = parseInt(randomTargetDigits.map(d => d.toString()).join('').padStart(6, '0'));
+              const actualDiff = randomCombinedNumber - lastRoundNumber;
+              if (actualDiff >= effectiveLowerBound && actualDiff <= effectiveUpperBound) {
+                generatedDigits = randomTargetDigits;
+                break;
+              }
             }
           }
         }
